@@ -1,0 +1,12 @@
+{{define "content"}}
+<section>
+    <h1>Usuários</h1>
+    <ul class="user-list">
+        {{range .Users}}
+        <li><a href="/users/{{.ID}}">{{.Name}}</a> — {{.Email}}</li>
+        {{else}}
+        <li>Nenhum usuário cadastrado.</li>
+        {{end}}
+    </ul>
+</section>
+{{end}}

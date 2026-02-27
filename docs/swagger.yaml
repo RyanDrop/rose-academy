@@ -1,0 +1,211 @@
+basePath: /
+definitions:
+  controllers.LoginRequest:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+    type: object
+  controllers.RegisterRequest:
+    properties:
+      cellphone:
+        type: string
+      email:
+        type: string
+      full_name:
+        type: string
+      gender:
+        type: string
+      goal_id:
+        type: string
+      password:
+        type: string
+      tax_id:
+        type: string
+    type: object
+  models.Goal:
+    properties:
+      created_at:
+        type: string
+      description:
+        type: string
+      id:
+        type: string
+      is_active:
+        type: boolean
+      name:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  models.User:
+    properties:
+      cellphone:
+        type: string
+      created_at:
+        type: string
+      date_birth:
+        type: string
+      email:
+        type: string
+      email_verified:
+        type: boolean
+      full_name:
+        type: string
+      gender:
+        type: string
+      goal_id:
+        type: string
+      height:
+        type: number
+      id:
+        type: string
+      is_active:
+        type: boolean
+      last_login_at:
+        type: string
+      profile_img:
+        type: string
+      tax_id:
+        type: string
+      updated_at:
+        type: string
+      weight:
+        type: number
+    type: object
+host: localhost:8080
+info:
+  contact: {}
+  description: 'API da Rose Academy: auth, metas e integração Abacate Pay.'
+  title: Rose Academy API
+  version: "1.0"
+paths:
+  /auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Valida email e senha; retorna usuário e JWT.
+      parameters:
+      - description: Credenciais
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Login
+      tags:
+      - auth
+  /auth/me:
+    get:
+      description: 'Retorna os dados do usuário autenticado. Requer header Authorization:
+        Bearer &lt;token&gt;.'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.User'
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Usuário logado
+      tags:
+      - auth
+  /auth/register:
+    post:
+      consumes:
+      - application/json
+      description: Cadastra usuário no app e cria cliente na Abacate Pay. Retorna
+        usuário e JWT.
+      parameters:
+      - description: Dados do cadastro
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.RegisterRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: email já cadastrado
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Criar usuário e cliente Abacate Pay
+      tags:
+      - auth
+  /goals:
+    get:
+      description: Retorna todas as metas ativas (para formulário de cadastro, etc.).
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.Goal'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Listar metas
+      tags:
+      - goals
+schemes:
+- http
+securityDefinitions:
+  BearerAuth:
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

@@ -1,0 +1,17 @@
+# Binário
+/rose-academy
+*.exe
+
+# Dependências
+/vendor/
+
+# IDE / OS
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db
+
+# Env (opcional)
+.env
+.env.local
