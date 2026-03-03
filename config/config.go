@@ -3,10 +3,10 @@ package config
 import (
 	"fmt"
 	"os"
+	"strings"
 	"time"
 )
 
-// Config armazena as configurações da aplicação
 type Config struct {
 	ServerPort  string
 	Env         string
@@ -15,7 +15,6 @@ type Config struct {
 	JWT         JWTConfig
 }
 
-// DBConfig configuração do PostgreSQL
 type DBConfig struct {
 	Host     string
 	Port     string
@@ -25,7 +24,6 @@ type DBConfig struct {
 	SSLMode  string
 }
 
-// DSN retorna a connection string do PostgreSQL
 func (d DBConfig) DSN() string {
 	if d.SSLMode == "" {
 		d.SSLMode = "disable"
@@ -36,8 +34,10 @@ func (d DBConfig) DSN() string {
 
 // AbacatePayConfig configuração da API Abacate Pay
 type AbacatePayConfig struct {
-	BaseURL string
-	APIKey  string
+	BaseURL        string
+	APIKey         string
+	WebhookSecret  string   // secret configurado no dashboard para validar webhooks
+	PaymentMethods []string // métodos aceitos: PIX, CARD. Se vazio, usa só PIX (CARD exige habilitação na loja)
 }
 
 // JWTConfig configuração do JWT
@@ -74,8 +74,10 @@ func Load() *Config {
 			SSLMode:  getEnv("DB_SSLMODE", "disable"),
 		},
 		AbacatePay: AbacatePayConfig{
-			BaseURL: getEnv("ABACATE_PAY_BASE_URL", "https://api.abacatepay.com/v1"),
-			APIKey:  os.Getenv("ABACATE_PAY_API_KEY"),
+			BaseURL:        getEnv("ABACATE_PAY_BASE_URL", "https://api.abacatepay.com/v1"),
+			APIKey:         os.Getenv("ABACATE_PAY_API_KEY"),
+			WebhookSecret:  os.Getenv("ABACATE_PAY_WEBHOOK_SECRET"),
+			PaymentMethods: parsePaymentMethods(getEnv("ABACATE_PAY_METHODS", "PIX")),
 		},
 		JWT: JWTConfig{
 			Secret:     getEnv("JWT_SECRET", "change-me-in-production"),
@@ -89,6 +91,29 @@ func getEnv(key, defaultVal string) string {
 		return v
 	}
 	return defaultVal
+}
+
+func parsePaymentMethods(s string) []string {
+	var out []string
+	for _, v := range strings.Split(strings.TrimSpace(s), ",") {
+		v = strings.TrimSpace(strings.ToUpper(v))
+		if v != "" && (v == "PIX" || v == "CARD") {
+			seen := false
+			for _, x := range out {
+				if x == v {
+					seen = true
+					break
+				}
+			}
+			if !seen {
+				out = append(out, v)
+			}
+		}
+	}
+	if len(out) == 0 {
+		return []string{"PIX"}
+	}
+	return out
 }
 
 func parseInt(s string) (int, error) {

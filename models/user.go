@@ -36,6 +36,17 @@ type User struct {
 	LastLoginAt   *time.Time `json:"last_login_at,omitempty"`
 }
 
+// UpdateProfileParams campos opcionais para PATCH do perfil (apenas campos presentes são atualizados)
+type UpdateProfileParams struct {
+	DateBirth     *time.Time
+	Weight        *float64
+	Height        *float64
+	GoalID        *uuid.UUID
+	ProfileImg    *string
+	Cellphone     *string
+	EmailVerified *bool
+}
+
 // UserRepository define as operações de persistência para User
 type UserRepository interface {
 	Create(user *User) error
@@ -44,4 +55,5 @@ type UserRepository interface {
 	FindByEmail(email string) (*User, error)
 	FindByTaxID(taxID string) (*User, error)
 	UpdateLastLoginAt(id uuid.UUID, at time.Time) error
+	UpdateProfile(id uuid.UUID, p UpdateProfileParams) error
 }

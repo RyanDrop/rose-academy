@@ -2,6 +2,8 @@ package models
 
 import (
 	"database/sql"
+	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -84,6 +86,55 @@ func (r *PostgresUserRepository) FindByTaxID(taxID string) (*User, error) {
 // UpdateLastLoginAt atualiza last_login_at
 func (r *PostgresUserRepository) UpdateLastLoginAt(id uuid.UUID, at time.Time) error {
 	_, err := r.db.Exec(`UPDATE users SET last_login_at = $1, updated_at = $2 WHERE id = $3`, at, at, id)
+	return err
+}
+
+// UpdateProfile atualiza apenas os campos não nulos em p para o usuário id. updated_at é sempre atualizado.
+func (r *PostgresUserRepository) UpdateProfile(id uuid.UUID, p UpdateProfileParams) error {
+	sets := []string{"updated_at = $1"}
+	args := []interface{}{time.Now()}
+	pos := 2
+	if p.DateBirth != nil {
+		sets = append(sets, fmt.Sprintf("date_birth = $%d", pos))
+		args = append(args, *p.DateBirth)
+		pos++
+	}
+	if p.Weight != nil {
+		sets = append(sets, fmt.Sprintf("weight = $%d", pos))
+		args = append(args, *p.Weight)
+		pos++
+	}
+	if p.Height != nil {
+		sets = append(sets, fmt.Sprintf("height = $%d", pos))
+		args = append(args, *p.Height)
+		pos++
+	}
+	if p.GoalID != nil {
+		sets = append(sets, fmt.Sprintf("goal_id = $%d", pos))
+		args = append(args, *p.GoalID)
+		pos++
+	}
+	if p.ProfileImg != nil {
+		sets = append(sets, fmt.Sprintf("profile_img = $%d", pos))
+		args = append(args, *p.ProfileImg)
+		pos++
+	}
+	if p.Cellphone != nil {
+		sets = append(sets, fmt.Sprintf("cellphone = $%d", pos))
+		args = append(args, nullIfEmpty(*p.Cellphone))
+		pos++
+	}
+	if p.EmailVerified != nil {
+		sets = append(sets, fmt.Sprintf("email_verified = $%d", pos))
+		args = append(args, *p.EmailVerified)
+		pos++
+	}
+	if len(sets) == 1 {
+		return nil
+	}
+	args = append(args, id)
+	q := fmt.Sprintf("UPDATE users SET %s WHERE id = $%d", strings.Join(sets, ", "), pos)
+	_, err := r.db.Exec(q, args...)
 	return err
 }
 

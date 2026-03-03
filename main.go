@@ -17,7 +17,7 @@ import (
 // @description	API da Rose Academy: auth, metas e integração Abacate Pay.
 // @host			localhost:8080
 // @BasePath		/
-// @schemes		http
+// @schemes		http https
 // @securityDefinitions.apikey	BearerAuth
 // @in							header
 // @name						Authorization

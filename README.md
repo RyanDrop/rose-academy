@@ -35,13 +35,13 @@ rose-academy/
 
 ## API – Primeira parte (auth + Abacate Pay)
 
-| Método | Rota            | Descrição                          | Auth   |
-|--------|-----------------|------------------------------------|--------|
-| GET    | `/health`       | Health check                       | Não    |
-| GET    | `/goals`        | Lista metas (para formulário)     | Não    |
-| POST   | `/auth/register`| Criar usuário + cliente Abacate Pay| Não    |
-| POST   | `/auth/login`   | Login (retorna usuário + token)   | Não    |
-| GET    | `/auth/me`      | Dados do usuário logado           | Bearer |
+| Método | Rota             | Descrição                           | Auth   |
+| ------ | ---------------- | ----------------------------------- | ------ |
+| GET    | `/health`        | Health check                        | Não    |
+| GET    | `/goals`         | Lista metas (para formulário)       | Não    |
+| POST   | `/auth/register` | Criar usuário + cliente Abacate Pay | Não    |
+| POST   | `/auth/login`    | Login (retorna usuário + token)     | Não    |
+| GET    | `/auth/me`       | Dados do usuário logado             | Bearer |
 
 ### POST /auth/register
 
@@ -102,20 +102,21 @@ Erros 500 (incluindo panic) não expõem detalhes internos; o `detail` é genér
 
 ## Variáveis de ambiente
 
-| Variável               | Descrição                    | Padrão                         |
-|------------------------|-----------------------------|--------------------------------|
-| `PORT`                 | Porta do servidor           | `8080`                         |
-| `ENV`                  | Ambiente                    | `development`                   |
-| `DB_HOST`              | Host PostgreSQL             | `localhost`                     |
-| `DB_PORT`              | Porta PostgreSQL            | `5432`                         |
-| `DB_USER`               | Usuário do banco            | `admin`                         |
-| `DB_PASSWORD`           | Senha do banco              | `password`                      |
-| `DB_NAME`               | Nome do banco               | `rose_gym_db`                   |
-| `DB_SSLMODE`            | SSL                         | `disable`                       |
-| `ABACATE_PAY_API_KEY`   | Chave API Abacate Pay       | (obrigatório para registro)     |
-| `ABACATE_PAY_BASE_URL`  | Base URL da API             | `https://api.abacatepay.com/v1` |
-| `JWT_SECRET`            | Segredo para assinatura JWT | `change-me-in-production`       |
-| `JWT_EXPIRATION_HOURS`  | Expiração do token (horas)  | `72`                            |
+| Variável                     | Descrição                                             | Padrão                                      |
+| ---------------------------- | ----------------------------------------------------- | ------------------------------------------- |
+| `PORT`                       | Porta do servidor                                     | `8080`                                      |
+| `ENV`                        | Ambiente                                              | `development`                               |
+| `DB_HOST`                    | Host PostgreSQL                                       | `localhost`                                 |
+| `DB_PORT`                    | Porta PostgreSQL                                      | `5432`                                      |
+| `DB_USER`                    | Usuário do banco                                      | `admin`                                     |
+| `DB_PASSWORD`                | Senha do banco                                        | `password`                                  |
+| `DB_NAME`                    | Nome do banco                                         | `rose_gym_db`                               |
+| `DB_SSLMODE`                 | SSL                                                   | `disable`                                   |
+| `ABACATE_PAY_API_KEY`        | Chave API Abacate Pay                                 | (obrigatório para registro)                 |
+| `ABACATE_PAY_BASE_URL`       | Base URL da API                                       | `https://api.abacatepay.com/v1`             |
+| `ABACATE_PAY_WEBHOOK_SECRET` | Secret do webhook (igual ao configurado no dashboard) | (obrigatório para atualizar banco ao pagar) |
+| `JWT_SECRET`                 | Segredo para assinatura JWT                           | `change-me-in-production`                   |
+| `JWT_EXPIRATION_HOURS`       | Expiração do token (horas)                            | `72`                                        |
 
 ## Stack
 

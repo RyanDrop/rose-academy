@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -13,19 +14,20 @@ import (
 	"rose-academy/services"
 )
 
-// AuthController controller de autenticação (registro e login)
 type AuthController struct {
 	authService *services.AuthService
 	userRepo    models.UserRepository
+	goalRepo    models.GoalRepository
 	jwtConfig   middleware.JWTConfig
 	devMode     bool // em true, erros 500 incluem a mensagem real (para depuração)
 }
 
 // NewAuthController cria o controller de autenticação. devMode: quando true (ex.: ENV=development), o detail do 500 usa a mensagem do erro.
-func NewAuthController(authService *services.AuthService, userRepo models.UserRepository, jwtConfig middleware.JWTConfig, devMode bool) *AuthController {
+func NewAuthController(authService *services.AuthService, userRepo models.UserRepository, goalRepo models.GoalRepository, jwtConfig middleware.JWTConfig, devMode bool) *AuthController {
 	return &AuthController{
 		authService: authService,
 		userRepo:    userRepo,
+		goalRepo:    goalRepo,
 		jwtConfig:   jwtConfig,
 		devMode:     devMode,
 	}
@@ -48,16 +50,6 @@ type RegisterRequest struct {
 	Gender    *string `json:"gender,omitempty"`
 }
 
-// Register cria usuário no app e cliente na Abacate Pay; retorna usuário + token
-// @Summary		Criar usuário e cliente Abacate Pay
-// @Description	Cadastra usuário no app e cria cliente na Abacate Pay. Retorna usuário e JWT.
-// @Tags			auth
-// @Accept		json
-// @Produce		json
-// @Param		body	body		RegisterRequest	true	"Dados do cadastro"
-// @Success		201	{object}	map[string]interface{}
-// @Failure		400	{object}	map[string]string
-// @Failure		409	{object}	map[string]string	"email já cadastrado"
 // @Router		/auth/register [post]
 func (c *AuthController) Register(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
@@ -141,16 +133,6 @@ type LoginRequest struct {
 	Password string `json:"password"`
 }
 
-// Login valida credenciais e retorna usuário + token
-// @Summary		Login
-// @Description	Valida email e senha; retorna usuário e JWT.
-// @Tags			auth
-// @Accept		json
-// @Produce		json
-// @Param		body	body		LoginRequest	true	"Credenciais"
-// @Success		200	{object}	map[string]interface{}
-// @Failure		400	{object}	map[string]string
-// @Failure		401	{object}	map[string]string
 // @Router		/auth/login [post]
 func (c *AuthController) Login(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
@@ -193,20 +175,94 @@ func (c *AuthController) Login(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// Me retorna o usuário autenticado (requer Authorization: Bearer <token>)
-// @Summary		Usuário logado
-// @Description	Retorna os dados do usuário autenticado. Requer header Authorization: Bearer &lt;token&gt;.
-// @Tags			auth
-// @Produce		json
-// @Security		BearerAuth
-// @Success		200	{object}	models.User
-// @Failure		401	{object}	map[string]string
-// @Failure		404	{object}	map[string]string
 // @Router		/auth/me [get]
 func (c *AuthController) Me(w http.ResponseWriter, r *http.Request) {
 	userID, ok := middleware.GetUserID(r.Context())
 	if !ok {
 		api.Write(w, r, http.StatusUnauthorized, "Unauthorized", "não autenticado")
+		return
+	}
+	user, err := c.userRepo.FindByID(userID)
+	if err != nil || user == nil {
+		api.Write(w, r, http.StatusNotFound, "Not Found", "usuário não encontrado")
+		return
+	}
+	user.PasswordHash = ""
+	c.respondJSON(w, http.StatusOK, user)
+}
+
+// PatchMeRequest body para PATCH /auth/me (todos os campos opcionais)
+type PatchMeRequest struct {
+	DateBirth     *string  `json:"date_birth,omitempty"`     // ISO date "2006-01-02"
+	Weight        *float64 `json:"weight,omitempty"`
+	Height        *float64 `json:"height,omitempty"`
+	GoalID        *string  `json:"goal_id,omitempty"`
+	ProfileImg    *string  `json:"profile_img,omitempty"`    // base64
+	Cellphone     *string  `json:"cellphone,omitempty"`
+	EmailVerified *bool    `json:"email_verified,omitempty"`
+}
+
+// @Router		/auth/me [patch]
+func (c *AuthController) PatchMe(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPatch {
+		api.Write(w, r, http.StatusMethodNotAllowed, "Method Not Allowed", "método não permitido")
+		return
+	}
+	userID, ok := middleware.GetUserID(r.Context())
+	if !ok {
+		api.Write(w, r, http.StatusUnauthorized, "Unauthorized", "não autenticado")
+		return
+	}
+	var req PatchMeRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		api.Write(w, r, http.StatusBadRequest, "Bad Request", "body JSON inválido")
+		return
+	}
+	var fieldErrs []api.FieldError
+	var dateBirth *time.Time
+	if req.DateBirth != nil {
+		t, err := time.Parse("2006-01-02", *req.DateBirth)
+		if err != nil {
+			fieldErrs = append(fieldErrs, api.FieldError{Field: "date_birth", Message: "deve ser uma data no formato AAAA-MM-DD"})
+		} else {
+			dateBirth = &t
+		}
+	}
+	if req.Weight != nil && *req.Weight <= 0 {
+		fieldErrs = append(fieldErrs, api.FieldError{Field: "weight", Message: "deve ser maior que zero"})
+	}
+	if req.Height != nil && *req.Height <= 0 {
+		fieldErrs = append(fieldErrs, api.FieldError{Field: "height", Message: "deve ser maior que zero"})
+	}
+	var goalID *uuid.UUID
+	if req.GoalID != nil && *req.GoalID != "" {
+		id, err := uuid.Parse(*req.GoalID)
+		if err != nil {
+			fieldErrs = append(fieldErrs, api.FieldError{Field: "goal_id", Message: "UUID inválido"})
+		} else {
+			goal, err := c.goalRepo.FindByID(id)
+			if err != nil || goal == nil {
+				fieldErrs = append(fieldErrs, api.FieldError{Field: "goal_id", Message: "meta não encontrada"})
+			} else {
+				goalID = &id
+			}
+		}
+	}
+	if len(fieldErrs) > 0 {
+		api.WriteValidation(w, r, fieldErrs)
+		return
+	}
+	params := models.UpdateProfileParams{
+		DateBirth:     dateBirth,
+		Weight:        req.Weight,
+		Height:        req.Height,
+		GoalID:        goalID,
+		ProfileImg:    req.ProfileImg,
+		Cellphone:     req.Cellphone,
+		EmailVerified: req.EmailVerified,
+	}
+	if err := c.userRepo.UpdateProfile(userID, params); err != nil {
+		api.WriteInternalErr(w, r, err, c.devMode)
 		return
 	}
 	user, err := c.userRepo.FindByID(userID)

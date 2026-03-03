@@ -1,11 +1,60 @@
 basePath: /
 definitions:
+  api.FieldError:
+    properties:
+      field:
+        type: string
+      message:
+        type: string
+    type: object
+  api.Problem:
+    properties:
+      detail:
+        description: Explicação específica desta ocorrência
+        type: string
+      errors:
+        description: 'Extensão: erros por campo (validação)'
+        items:
+          $ref: '#/definitions/api.FieldError'
+        type: array
+      instance:
+        description: 'URI que identifica a ocorrência (ex: path da requisição)'
+        type: string
+      status:
+        description: Código HTTP
+        type: integer
+      title:
+        description: Resumo legível do tipo
+        type: string
+      type:
+        description: URI reference que identifica o tipo do problema
+        type: string
+    type: object
   controllers.LoginRequest:
     properties:
       email:
         type: string
       password:
         type: string
+    type: object
+  controllers.PatchMeRequest:
+    properties:
+      cellphone:
+        type: string
+      date_birth:
+        description: ISO date "2006-01-02"
+        type: string
+      email_verified:
+        type: boolean
+      goal_id:
+        type: string
+      height:
+        type: number
+      profile_img:
+        description: base64
+        type: string
+      weight:
+        type: number
     type: object
   controllers.RegisterRequest:
     properties:
@@ -24,6 +73,15 @@ definitions:
       tax_id:
         type: string
     type: object
+  controllers.SubscribeRequest:
+    properties:
+      completion_url:
+        type: string
+      product_id:
+        type: string
+      return_url:
+        type: string
+    type: object
   models.Goal:
     properties:
       created_at:
@@ -36,6 +94,27 @@ definitions:
         type: boolean
       name:
         type: string
+      updated_at:
+        type: string
+    type: object
+  models.Product:
+    properties:
+      created_at:
+        type: string
+      description:
+        type: string
+      external_id:
+        type: string
+      id:
+        type: string
+      image_url:
+        type: string
+      is_active:
+        type: boolean
+      name:
+        type: string
+      price_cents:
+        type: integer
       updated_at:
         type: string
     type: object
@@ -74,6 +153,23 @@ definitions:
       weight:
         type: number
     type: object
+  services.CheckPixStatusOutput:
+    properties:
+      expires_at:
+        type: string
+      status:
+        description: PENDING, EXPIRED, CANCELLED, PAID, REFUNDED
+        type: string
+    type: object
+  services.CreateSubscriptionOutput:
+    properties:
+      billing_id:
+        type: string
+      payment_url:
+        type: string
+      status:
+        type: string
+    type: object
 host: localhost:8080
 info:
   contact: {}
@@ -87,7 +183,7 @@ paths:
       - application/json
       description: Valida email e senha; retorna usuário e JWT.
       parameters:
-      - description: Credenciais
+      - description: Credenciais (email e password)
         in: body
         name: body
         required: true
@@ -104,15 +200,11 @@ paths:
         "400":
           description: Bad Request
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/api.Problem'
         "401":
-          description: Unauthorized
+          description: email ou senha inválidos
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/api.Problem'
       summary: Login
       tags:
       - auth
@@ -130,18 +222,49 @@ paths:
         "401":
           description: Unauthorized
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/api.Problem'
         "404":
           description: Not Found
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/api.Problem'
       security:
       - BearerAuth: []
       summary: Usuário logado
+      tags:
+      - auth
+    patch:
+      consumes:
+      - application/json
+      description: Atualiza date_birth, weight, height, goal_id, profile_img, cellphone
+        e/ou email_verified. Apenas campos enviados são alterados.
+      parameters:
+      - description: Campos a atualizar
+        in: body
+        name: body
+        schema:
+          $ref: '#/definitions/controllers.PatchMeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.User'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.Problem'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.Problem'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.Problem'
+      security:
+      - BearerAuth: []
+      summary: Atualizar perfil
       tags:
       - auth
   /auth/register:
@@ -168,15 +291,15 @@ paths:
         "400":
           description: Bad Request
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/api.Problem'
         "409":
-          description: email já cadastrado
+          description: email ou CPF/CNPJ já cadastrado
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/api.Problem'
+        "503":
+          description: Gateway não configurado
+          schema:
+            $ref: '#/definitions/api.Problem'
       summary: Criar usuário e cliente Abacate Pay
       tags:
       - auth
@@ -195,14 +318,170 @@ paths:
         "500":
           description: Internal Server Error
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/api.Problem'
       summary: Listar metas
       tags:
       - goals
+  /health:
+    get:
+      description: Retorna status da API. Útil para load balancers e monitoramento.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 'Ex.: {\"status\":\"ok\"}'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Health check
+      tags:
+      - health
+  /payments/pix/check:
+    get:
+      description: Consulta o status do pagamento do QR Code PIX (PENDING, EXPIRED,
+        CANCELLED, PAID, REFUNDED). Ver [Checar Status](https://docs.abacatepay.com/pages/pix-qrcode/check).
+      parameters:
+      - description: ID do QR Code PIX
+        in: query
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/services.CheckPixStatusOutput'
+        "400":
+          description: id ausente
+          schema:
+            $ref: '#/definitions/api.Problem'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.Problem'
+        "503":
+          description: Gateway não configurado
+          schema:
+            $ref: '#/definitions/api.Problem'
+      security:
+      - BearerAuth: []
+      summary: Checar status PIX
+      tags:
+      - billing
+  /products:
+    get:
+      description: 'Retorna os produtos/planos disponíveis para assinatura (ex.: Plano
+        Anual, Plano Mensal).'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.Product'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Listar produtos
+      tags:
+      - products
+  /subscribe:
+    post:
+      consumes:
+      - application/json
+      description: Cria uma cobrança para o usuário autenticado no plano escolhido.
+        Retorna a URL para pagamento (PIX ou cartão).
+      parameters:
+      - description: product_id (UUID), return_url e completion_url
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.SubscribeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/services.CreateSubscriptionOutput'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "503":
+          description: Service Unavailable
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Assinar plano
+      tags:
+      - billing
+  /webhooks/abacatepay:
+    post:
+      consumes:
+      - application/json
+      description: 'Endpoint para receber eventos da Abacate Pay (ex.: billing.paid).
+        Configure a URL no dashboard com o secret.'
+      parameters:
+      - description: Secret configurado no dashboard
+        in: query
+        name: webhookSecret
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: boolean
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Webhook Abacate Pay
+      tags:
+      - billing
 schemes:
 - http
+- https
 securityDefinitions:
   BearerAuth:
     in: header

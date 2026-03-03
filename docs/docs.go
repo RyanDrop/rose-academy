@@ -31,7 +31,7 @@ const docTemplate = `{
                 "summary": "Login",
                 "parameters": [
                     {
-                        "description": "Credenciais",
+                        "description": "Credenciais (email e password)",
                         "name": "body",
                         "in": "body",
                         "required": true,
@@ -51,19 +51,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/api.Problem"
                         }
                     },
                     "401": {
-                        "description": "Unauthorized",
+                        "description": "email ou senha inválidos",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/api.Problem"
                         }
                     }
                 }
@@ -94,19 +88,67 @@ const docTemplate = `{
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/api.Problem"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/api.Problem"
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Atualiza date_birth, weight, height, goal_id, profile_img, cellphone e/ou email_verified. Apenas campos enviados são alterados.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Atualizar perfil",
+                "parameters": [
+                    {
+                        "description": "Campos a atualizar",
+                        "name": "body",
+                        "in": "body",
+                        "schema": {
+                            "$ref": "#/definitions/controllers.PatchMeRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.User"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.Problem"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/api.Problem"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/api.Problem"
                         }
                     }
                 }
@@ -147,19 +189,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/api.Problem"
                         }
                     },
                     "409": {
-                        "description": "email já cadastrado",
+                        "description": "email ou CPF/CNPJ já cadastrado",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/api.Problem"
+                        }
+                    },
+                    "503": {
+                        "description": "Gateway não configurado",
+                        "schema": {
+                            "$ref": "#/definitions/api.Problem"
                         }
                     }
                 }
@@ -188,6 +230,242 @@ const docTemplate = `{
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
+                            "$ref": "#/definitions/api.Problem"
+                        }
+                    }
+                }
+            }
+        },
+        "/health": {
+            "get": {
+                "description": "Retorna status da API. Útil para load balancers e monitoramento.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "health"
+                ],
+                "summary": "Health check",
+                "responses": {
+                    "200": {
+                        "description": "Ex.: {\\\"status\\\":\\\"ok\\\"}",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/payments/pix/check": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Consulta o status do pagamento do QR Code PIX (PENDING, EXPIRED, CANCELLED, PAID, REFUNDED). Ver [Checar Status](https://docs.abacatepay.com/pages/pix-qrcode/check).",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "billing"
+                ],
+                "summary": "Checar status PIX",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID do QR Code PIX",
+                        "name": "id",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/services.CheckPixStatusOutput"
+                        }
+                    },
+                    "400": {
+                        "description": "id ausente",
+                        "schema": {
+                            "$ref": "#/definitions/api.Problem"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/api.Problem"
+                        }
+                    },
+                    "503": {
+                        "description": "Gateway não configurado",
+                        "schema": {
+                            "$ref": "#/definitions/api.Problem"
+                        }
+                    }
+                }
+            }
+        },
+        "/products": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Retorna os produtos/planos disponíveis para assinatura (ex.: Plano Anual, Plano Mensal).",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "products"
+                ],
+                "summary": "Listar produtos",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.Product"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/subscribe": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Cria uma cobrança para o usuário autenticado no plano escolhido. Retorna a URL para pagamento (PIX ou cartão).",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "billing"
+                ],
+                "summary": "Assinar plano",
+                "parameters": [
+                    {
+                        "description": "product_id (UUID), return_url e completion_url",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/controllers.SubscribeRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/services.CreateSubscriptionOutput"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/webhooks/abacatepay": {
+            "post": {
+                "description": "Endpoint para receber eventos da Abacate Pay (ex.: billing.paid). Configure a URL no dashboard com o secret.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "billing"
+                ],
+                "summary": "Webhook Abacate Pay",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Secret configurado no dashboard",
+                        "name": "webhookSecret",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "boolean"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
                             "type": "object",
                             "additionalProperties": {
                                 "type": "string"
@@ -199,6 +477,49 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "api.FieldError": {
+            "type": "object",
+            "properties": {
+                "field": {
+                    "type": "string"
+                },
+                "message": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.Problem": {
+            "type": "object",
+            "properties": {
+                "detail": {
+                    "description": "Explicação específica desta ocorrência",
+                    "type": "string"
+                },
+                "errors": {
+                    "description": "Extensão: erros por campo (validação)",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/api.FieldError"
+                    }
+                },
+                "instance": {
+                    "description": "URI que identifica a ocorrência (ex: path da requisição)",
+                    "type": "string"
+                },
+                "status": {
+                    "description": "Código HTTP",
+                    "type": "integer"
+                },
+                "title": {
+                    "description": "Resumo legível do tipo",
+                    "type": "string"
+                },
+                "type": {
+                    "description": "URI reference que identifica o tipo do problema",
+                    "type": "string"
+                }
+            }
+        },
         "controllers.LoginRequest": {
             "type": "object",
             "properties": {
@@ -207,6 +528,34 @@ const docTemplate = `{
                 },
                 "password": {
                     "type": "string"
+                }
+            }
+        },
+        "controllers.PatchMeRequest": {
+            "type": "object",
+            "properties": {
+                "cellphone": {
+                    "type": "string"
+                },
+                "date_birth": {
+                    "description": "ISO date \"2006-01-02\"",
+                    "type": "string"
+                },
+                "email_verified": {
+                    "type": "boolean"
+                },
+                "goal_id": {
+                    "type": "string"
+                },
+                "height": {
+                    "type": "number"
+                },
+                "profile_img": {
+                    "description": "base64",
+                    "type": "string"
+                },
+                "weight": {
+                    "type": "number"
                 }
             }
         },
@@ -236,6 +585,20 @@ const docTemplate = `{
                 }
             }
         },
+        "controllers.SubscribeRequest": {
+            "type": "object",
+            "properties": {
+                "completion_url": {
+                    "type": "string"
+                },
+                "product_id": {
+                    "type": "string"
+                },
+                "return_url": {
+                    "type": "string"
+                }
+            }
+        },
         "models.Goal": {
             "type": "object",
             "properties": {
@@ -253,6 +616,38 @@ const docTemplate = `{
                 },
                 "name": {
                     "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.Product": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "external_id": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "image_url": {
+                    "type": "string"
+                },
+                "is_active": {
+                    "type": "boolean"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "price_cents": {
+                    "type": "integer"
                 },
                 "updated_at": {
                     "type": "string"
@@ -311,6 +706,32 @@ const docTemplate = `{
                     "type": "number"
                 }
             }
+        },
+        "services.CheckPixStatusOutput": {
+            "type": "object",
+            "properties": {
+                "expires_at": {
+                    "type": "string"
+                },
+                "status": {
+                    "description": "PENDING, EXPIRED, CANCELLED, PAID, REFUNDED",
+                    "type": "string"
+                }
+            }
+        },
+        "services.CreateSubscriptionOutput": {
+            "type": "object",
+            "properties": {
+                "billing_id": {
+                    "type": "string"
+                },
+                "payment_url": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                }
+            }
         }
     },
     "securityDefinitions": {
@@ -327,7 +748,7 @@ var SwaggerInfo = &swag.Spec{
 	Version:          "1.0",
 	Host:             "localhost:8080",
 	BasePath:         "/",
-	Schemes:          []string{"http"},
+	Schemes:          []string{"http", "https"},
 	Title:            "Rose Academy API",
 	Description:      "API da Rose Academy: auth, metas e integração Abacate Pay.",
 	InfoInstanceName: "swagger",
