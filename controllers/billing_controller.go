@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
-	"log"
 	"net/http"
 	"strings"
 
@@ -12,7 +11,6 @@ import (
 
 	"rose-academy/api"
 	"rose-academy/middleware"
-	"rose-academy/models"
 	"rose-academy/services"
 )
 
@@ -39,6 +37,19 @@ type SubscribeRequest struct {
 	CompletionURL string `json:"completion_url"`
 }
 
+// Subscribe cria cobrança avulsa (v1) e registro PENDING em user_subscriptions
+// @Summary		Assinar plano (cobrança única)
+// @Description	Cria billing na Abacate Pay v1; após pagamento o webhook marca PAID
+// @Tags			billing
+// @Accept		json
+// @Produce		json
+// @Security		BearerAuth
+// @Param		body	body	SubscribeRequest	true	"produto e URLs de retorno"
+// @Success		200	{object}	services.CreateSubscriptionOutput
+// @Failure		400	{object}	map[string]interface{}	"validação ou cliente não vinculado"
+// @Failure		401	{object}	map[string]interface{}
+// @Failure		404	{object}	map[string]interface{}	"produto não encontrado"
+// @Failure		503	{object}	map[string]interface{}	"gateway"
 // @Router		/subscribe [post]
 func (c *BillingController) Subscribe(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
@@ -106,6 +117,15 @@ func (c *BillingController) Subscribe(w http.ResponseWriter, r *http.Request) {
 	_ = json.NewEncoder(w).Encode(out)
 }
 
+// CheckPixStatus consulta status do QR Code PIX
+// @Summary		Status PIX
+// @Tags			billing
+// @Produce		json
+// @Security		BearerAuth
+// @Param		id	query	string	true	"id do QR code na Abacate Pay"
+// @Success		200	{object}	services.CheckPixStatusOutput
+// @Failure		401	{object}	map[string]interface{}
+// @Failure		503	{object}	map[string]interface{}
 // @Router		/payments/pix/check [get]
 func (c *BillingController) CheckPixStatus(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
@@ -144,6 +164,22 @@ type AbacatePayWebhookEvent struct {
 	DevMode bool                   `json:"devMode"`
 }
 
+// WebhookAck resposta 200 do endpoint de webhook
+type WebhookAck struct {
+	Received bool `json:"received"`
+}
+
+// WebhookAbacatePay recebe eventos Abacate Pay (ex.: billing.paid)
+// @Summary		Webhook Abacate Pay
+// @Description	Validação opcional: query webhookSecret = ABACATE_PAY_WEBHOOK_SECRET
+// @Tags			webhooks
+// @Accept		json
+// @Produce		json
+// @Param		webhookSecret	query	string	false	"deve coincidir com ABACATE_PAY_WEBHOOK_SECRET se configurado"
+// @Param		body	body	AbacatePayWebhookEvent	true	"evento (ex. billing.paid)"
+// @Success		200	{object}	WebhookAck
+// @Failure		400	{object}	map[string]interface{}
+// @Failure		401	{object}	map[string]interface{}
 // @Router		/webhooks/abacatepay [post]
 func (c *BillingController) WebhookAbacatePay(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
@@ -167,46 +203,8 @@ func (c *BillingController) WebhookAbacatePay(w http.ResponseWriter, r *http.Req
 		api.Write(w, r, http.StatusBadRequest, "Bad Request", "JSON inválido")
 		return
 	}
-	switch event.Event {
-	case "billing.paid":
-		billingID := extractBillingIDFromWebhook(event.Data)
-		if billingID == "" {
-			log.Printf("[webhook] billing.paid: não foi possível extrair billing id do payload (data=%+v)", event.Data)
-		} else {
-			log.Printf("[webhook] billing.paid: billing_id=%s", billingID)
-			if err := c.billingService.MarkBillingPaid(billingID); err != nil {
-				if errors.Is(err, models.ErrSubscriptionNotFoundForBilling) {
-					log.Printf("[webhook] billing.paid: nenhuma assinatura no banco com abp_billing_id=%q (cobrança criada fora do app ou subscription não foi registrada)", billingID)
-				} else {
-					log.Printf("[webhook] billing.paid: erro ao atualizar banco: %v", err)
-				}
-			} else {
-				log.Printf("[webhook] billing.paid: assinatura atualizada para PAID (billing_id=%s)", billingID)
-			}
-		}
-	}
+	c.billingService.HandleAbacateWebhook(event.Event, event.Data)
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write([]byte(`{"received":true}`))
-}
-
-func extractBillingIDFromWebhook(data map[string]interface{}) string {
-	if data == nil {
-		return ""
-	}
-	// data.billing.id (formato comum no payload da Abacate Pay)
-	if b, _ := data["billing"].(map[string]interface{}); b != nil {
-		if id, _ := b["id"].(string); id != "" {
-			return id
-		}
-	}
-	// data.payment.billing.id (alternativo)
-	if p, _ := data["payment"].(map[string]interface{}); p != nil {
-		if b, _ := p["billing"].(map[string]interface{}); b != nil {
-			if id, _ := b["id"].(string); id != "" {
-				return id
-			}
-		}
-	}
-	return ""
 }

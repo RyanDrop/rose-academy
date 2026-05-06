@@ -71,20 +71,64 @@ func ensureProductsAndSubscriptionsTables(db *sql.DB) error {
 	if err != nil {
 		return err
 	}
-	return seedDefaultProducts(db)
+	return ensureProductsAbacateSubscriptionColumn(db)
 }
 
-// seedDefaultProducts insere Plano Anual e Plano Mensal se a tabela products estiver vazia.
-func seedDefaultProducts(db *sql.DB) error {
-	var n int
-	if err := db.QueryRow("SELECT COUNT(*) FROM products").Scan(&n); err != nil || n > 0 {
-		return nil
+// ensureProductsAbacateSubscriptionColumn adiciona coluna para id do produto de assinatura na Abacate Pay (API v2).
+func ensureProductsAbacateSubscriptionColumn(db *sql.DB) error {
+	_, err := db.Exec(`ALTER TABLE products ADD COLUMN IF NOT EXISTS abacate_subscription_product_id VARCHAR(128)`)
+	if err != nil {
+		return err
+	}
+	if err := upsertAbacateSubscriptionProducts(db); err != nil {
+		return err
+	}
+	if err := ensureUserSubscriptionsSubscriptionIDColumn(db); err != nil {
+		return err
+	}
+	return ensureUserSubscriptionsCheckoutExternalIDColumn(db)
+}
+
+// ensureUserSubscriptionsSubscriptionIDColumn armazena o id da assinatura na Abacate (subs_*) para webhooks cancel/renew.
+func ensureUserSubscriptionsSubscriptionIDColumn(db *sql.DB) error {
+	if _, err := db.Exec(`ALTER TABLE user_subscriptions ADD COLUMN IF NOT EXISTS abp_subscription_id VARCHAR(128)`); err != nil {
+		return err
 	}
 	_, err := db.Exec(`
-		INSERT INTO products (external_id, name, description, price_cents, is_active) VALUES
-		('plano-anual', 'Plano Anual', 'Plano anual do app', 49900, true),
-		('plano-mensal', 'Plano Mensal', 'Plano mensal do app', 5490, true)
-		ON CONFLICT (external_id) DO NOTHING
+		CREATE UNIQUE INDEX IF NOT EXISTS idx_user_subscriptions_abp_subscription_id
+		ON user_subscriptions (abp_subscription_id)
+		WHERE abp_subscription_id IS NOT NULL AND abp_subscription_id <> ''
+	`)
+	return err
+}
+
+// ensureUserSubscriptionsCheckoutExternalIDColumn externalId enviado à Abacate (reconcilia webhooks).
+func ensureUserSubscriptionsCheckoutExternalIDColumn(db *sql.DB) error {
+	if _, err := db.Exec(`ALTER TABLE user_subscriptions ADD COLUMN IF NOT EXISTS checkout_external_id VARCHAR(128)`); err != nil {
+		return err
+	}
+	_, err := db.Exec(`
+		CREATE UNIQUE INDEX IF NOT EXISTS idx_user_subscriptions_checkout_external_id
+		ON user_subscriptions (checkout_external_id)
+		WHERE checkout_external_id IS NOT NULL AND checkout_external_id <> ''
+	`)
+	return err
+}
+
+// upsertAbacateSubscriptionProducts garante os planos de assinatura (Abacate Pay prod_*) no catálogo local.
+func upsertAbacateSubscriptionProducts(db *sql.DB) error {
+	_, err := db.Exec(`
+		INSERT INTO products (external_id, name, description, price_cents, is_active, abacate_subscription_product_id, updated_at)
+		VALUES
+			('assinatura-mensal', 'Assinatura Mensal', 'Assinatura Mensal da academia', 4999, true, 'prod_5W52efm1aj4dZt4aYSZFAdFF', now()),
+			('assinatura-anual', 'Assinatura Anual', 'Assinatura Anual da academia', 49999, true, 'prod_qTrPpDnL5B3MrN5Sn3sYqqz2', now())
+		ON CONFLICT (external_id) DO UPDATE SET
+			name = EXCLUDED.name,
+			description = EXCLUDED.description,
+			price_cents = EXCLUDED.price_cents,
+			is_active = EXCLUDED.is_active,
+			abacate_subscription_product_id = EXCLUDED.abacate_subscription_product_id,
+			updated_at = now()
 	`)
 	return err
 }

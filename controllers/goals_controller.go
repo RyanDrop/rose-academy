@@ -19,6 +19,11 @@ func NewGoalsController(goalRepo models.GoalRepository, devMode bool) *GoalsCont
 	return &GoalsController{goalRepo: goalRepo, devMode: devMode}
 }
 
+// List lista metas ativas (público, ex.: cadastro)
+// @Summary		Listar metas
+// @Tags			catalog
+// @Produce		json
+// @Success		200	{array}	models.Goal
 // @Router		/goals [get]
 func (c *GoalsController) List(w http.ResponseWriter, r *http.Request) {
 	goals, err := c.goalRepo.FindAll()

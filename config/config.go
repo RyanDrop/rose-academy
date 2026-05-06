@@ -35,9 +35,11 @@ func (d DBConfig) DSN() string {
 // AbacatePayConfig configuração da API Abacate Pay
 type AbacatePayConfig struct {
 	BaseURL        string
+	V2BaseURL      string   // API v2 (assinaturas: /subscriptions/*)
 	APIKey         string
 	WebhookSecret  string   // secret configurado no dashboard para validar webhooks
-	PaymentMethods []string // métodos aceitos: PIX, CARD. Se vazio, usa só PIX (CARD exige habilitação na loja)
+	PaymentMethods []string // cobrança avulsa (v1 billing/create): PIX, CARD
+	SubMethods     []string // checkout de assinatura (v2 subscriptions/create); padrão CARD (doc Abacate Pay)
 }
 
 // JWTConfig configuração do JWT
@@ -75,9 +77,11 @@ func Load() *Config {
 		},
 		AbacatePay: AbacatePayConfig{
 			BaseURL:        getEnv("ABACATE_PAY_BASE_URL", "https://api.abacatepay.com/v1"),
+			V2BaseURL:      getEnv("ABACATE_PAY_V2_BASE_URL", "https://api.abacatepay.com/v2"),
 			APIKey:         os.Getenv("ABACATE_PAY_API_KEY"),
 			WebhookSecret:  os.Getenv("ABACATE_PAY_WEBHOOK_SECRET"),
 			PaymentMethods: parsePaymentMethods(getEnv("ABACATE_PAY_METHODS", "PIX")),
+			SubMethods:     parsePaymentMethods(getEnv("ABACATE_PAY_SUBSCRIPTION_METHODS", "CARD")),
 		},
 		JWT: JWTConfig{
 			Secret:     getEnv("JWT_SECRET", "change-me-in-production"),

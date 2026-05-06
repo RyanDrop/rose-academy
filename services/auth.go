@@ -5,17 +5,16 @@ import (
 	"errors"
 	"time"
 
-	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 
 	"rose-academy/models"
 )
 
 var (
-	ErrEmailInUse      = errors.New("email já cadastrado")
-	ErrTaxIDInUse      = errors.New("CPF/CNPJ já cadastrado")
-	ErrInvalidCreds    = errors.New("email ou senha inválidos")
-	ErrPaymentGateway  = errors.New("gateway de pagamento indisponível ou não configurado")
+	ErrEmailInUse     = errors.New("email já cadastrado")
+	ErrTaxIDInUse     = errors.New("CPF/CNPJ já cadastrado")
+	ErrInvalidCreds   = errors.New("email ou senha inválidos")
+	ErrPaymentGateway = errors.New("gateway de pagamento indisponível ou não configurado")
 )
 
 // AuthService serviço de autenticação e registro
@@ -46,15 +45,12 @@ func NewAuthService(
 	}
 }
 
-// RegisterInput dados para registro de usuário
+// RegisterInput dados para registro (CPF opcional; demais perfil em PATCH /auth/me).
 type RegisterInput struct {
-	Email     string     `json:"email"`
-	Password  string     `json:"password"`
-	FullName  string     `json:"full_name"`
-	Cellphone string     `json:"cellphone"`
-	TaxID     string     `json:"tax_id"`
-	GoalID    *uuid.UUID `json:"goal_id,omitempty"`
-	Gender    *string    `json:"gender,omitempty"`
+	Email    string `json:"email"`
+	Password string `json:"password"`
+	FullName string `json:"full_name"`
+	TaxID    string `json:"tax_id,omitempty"` // apenas dígitos gravados; vazio ignora
 }
 
 // Register cria o cliente na Abacate Pay e só então persiste usuário e vínculo no banco em uma transação.
@@ -64,10 +60,10 @@ func (s *AuthService) Register(in RegisterInput) (*models.User, error) {
 	if existing != nil {
 		return nil, ErrEmailInUse
 	}
-	taxIDNorm := onlyDigits(in.TaxID)
-	if taxIDNorm != "" {
-		existingByTax, _ := s.userRepo.FindByTaxID(taxIDNorm)
-		if existingByTax != nil {
+	taxNorm := onlyDigits(in.TaxID)
+	if taxNorm != "" {
+		byTax, _ := s.userRepo.FindByTaxID(taxNorm)
+		if byTax != nil {
 			return nil, ErrTaxIDInUse
 		}
 	}
@@ -79,19 +75,15 @@ func (s *AuthService) Register(in RegisterInput) (*models.User, error) {
 		Email:         in.Email,
 		PasswordHash:  string(hash),
 		FullName:      in.FullName,
-		Cellphone:     in.Cellphone,
-		TaxID:         in.TaxID,
-		GoalID:        in.GoalID,
-		Gender:        in.Gender,
 		IsActive:      true,
 		EmailVerified: false,
 	}
-	if taxIDNorm != "" {
-		user.TaxID = taxIDNorm
+	if taxNorm != "" {
+		user.TaxID = taxNorm
 	}
 
-	// 1) Criar cliente na Abacate Pay antes de qualquer write no banco
-	abpID, err := s.abpClient.CreateCustomer(user.FullName, user.Cellphone, user.Email, user.TaxID)
+	// 1) Criar cliente na Abacate Pay antes de qualquer write no banco.
+	abpID, err := s.abpClient.CreateCustomer(user.FullName, "", user.Email, user.TaxID)
 	if err != nil {
 		if errors.Is(err, ErrAPIKeyNotConfigured) {
 			return nil, ErrPaymentGateway

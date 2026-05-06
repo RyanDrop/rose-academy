@@ -124,6 +124,16 @@ func (r *PostgresUserRepository) UpdateProfile(id uuid.UUID, p UpdateProfilePara
 		args = append(args, nullIfEmpty(*p.Cellphone))
 		pos++
 	}
+	if p.TaxID != nil {
+		sets = append(sets, fmt.Sprintf("tax_id = $%d", pos))
+		args = append(args, nullIfEmpty(*p.TaxID))
+		pos++
+	}
+	if p.Gender != nil {
+		sets = append(sets, fmt.Sprintf("gender = $%d", pos))
+		args = append(args, nullIfEmpty(strings.TrimSpace(*p.Gender)))
+		pos++
+	}
 	if p.EmailVerified != nil {
 		sets = append(sets, fmt.Sprintf("email_verified = $%d", pos))
 		args = append(args, *p.EmailVerified)
@@ -140,12 +150,15 @@ func (r *PostgresUserRepository) UpdateProfile(id uuid.UUID, p UpdateProfilePara
 
 func scanUser(row *sql.Row) (*User, error) {
 	var u User
+	var genderNS, profileImgNS sql.NullString
+	var dateBirth sql.NullTime
+	var weightNS, heightNS sql.NullFloat64
 	var goalID sql.NullString
 	var cellphone, taxID sql.NullString
 	var lastLogin sql.NullTime
 	err := row.Scan(
-		&u.ID, &u.Email, &u.PasswordHash, &u.FullName, &u.Gender, &u.DateBirth, &u.Weight, &u.Height,
-		&goalID, &cellphone, &taxID, &u.ProfileImg, &u.IsActive, &u.EmailVerified,
+		&u.ID, &u.Email, &u.PasswordHash, &u.FullName, &genderNS, &dateBirth, &weightNS, &heightNS,
+		&goalID, &cellphone, &taxID, &profileImgNS, &u.IsActive, &u.EmailVerified,
 		&u.CreatedAt, &u.UpdatedAt, &lastLogin,
 	)
 	if err == sql.ErrNoRows {
@@ -153,6 +166,22 @@ func scanUser(row *sql.Row) (*User, error) {
 	}
 	if err != nil {
 		return nil, err
+	}
+	if genderNS.Valid {
+		s := genderNS.String
+		u.Gender = &s
+	}
+	if dateBirth.Valid {
+		t := dateBirth.Time
+		u.DateBirth = &t
+	}
+	if weightNS.Valid {
+		w := weightNS.Float64
+		u.Weight = &w
+	}
+	if heightNS.Valid {
+		h := heightNS.Float64
+		u.Height = &h
 	}
 	if goalID.Valid {
 		if id, e := uuid.Parse(goalID.String); e == nil {
@@ -164,6 +193,10 @@ func scanUser(row *sql.Row) (*User, error) {
 	}
 	if taxID.Valid {
 		u.TaxID = taxID.String
+	}
+	if profileImgNS.Valid {
+		p := profileImgNS.String
+		u.ProfileImg = &p
 	}
 	if lastLogin.Valid {
 		u.LastLoginAt = &lastLogin.Time

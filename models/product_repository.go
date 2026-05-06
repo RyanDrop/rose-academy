@@ -19,7 +19,7 @@ func NewPostgresProductRepository(db *sql.DB) *PostgresProductRepository {
 // FindAll retorna todos os produtos ativos
 func (r *PostgresProductRepository) FindAll() ([]*Product, error) {
 	rows, err := r.db.Query(`
-		SELECT id, external_id, name, COALESCE(description,''), price_cents, COALESCE(image_url,''), is_active, created_at, updated_at
+		SELECT id, external_id, name, COALESCE(description,''), price_cents, COALESCE(image_url,''), COALESCE(abacate_subscription_product_id,''), is_active, created_at, updated_at
 		FROM products WHERE is_active = true ORDER BY name
 	`)
 	if err != nil {
@@ -29,7 +29,7 @@ func (r *PostgresProductRepository) FindAll() ([]*Product, error) {
 	var list []*Product
 	for rows.Next() {
 		var p Product
-		err := rows.Scan(&p.ID, &p.ExternalID, &p.Name, &p.Description, &p.PriceCents, &p.ImageURL, &p.IsActive, &p.CreatedAt, &p.UpdatedAt)
+		err := rows.Scan(&p.ID, &p.ExternalID, &p.Name, &p.Description, &p.PriceCents, &p.ImageURL, &p.AbacateSubscriptionProductID, &p.IsActive, &p.CreatedAt, &p.UpdatedAt)
 		if err != nil {
 			return nil, err
 		}
@@ -41,11 +41,11 @@ func (r *PostgresProductRepository) FindAll() ([]*Product, error) {
 // FindByID retorna produto pelo ID
 func (r *PostgresProductRepository) FindByID(id uuid.UUID) (*Product, error) {
 	row := r.db.QueryRow(`
-		SELECT id, external_id, name, COALESCE(description,''), price_cents, COALESCE(image_url,''), is_active, created_at, updated_at
+		SELECT id, external_id, name, COALESCE(description,''), price_cents, COALESCE(image_url,''), COALESCE(abacate_subscription_product_id,''), is_active, created_at, updated_at
 		FROM products WHERE id = $1
 	`, id)
 	var p Product
-	err := row.Scan(&p.ID, &p.ExternalID, &p.Name, &p.Description, &p.PriceCents, &p.ImageURL, &p.IsActive, &p.CreatedAt, &p.UpdatedAt)
+	err := row.Scan(&p.ID, &p.ExternalID, &p.Name, &p.Description, &p.PriceCents, &p.ImageURL, &p.AbacateSubscriptionProductID, &p.IsActive, &p.CreatedAt, &p.UpdatedAt)
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}
@@ -58,11 +58,11 @@ func (r *PostgresProductRepository) FindByID(id uuid.UUID) (*Product, error) {
 // FindByExternalID retorna produto pelo external_id
 func (r *PostgresProductRepository) FindByExternalID(externalID string) (*Product, error) {
 	row := r.db.QueryRow(`
-		SELECT id, external_id, name, COALESCE(description,''), price_cents, COALESCE(image_url,''), is_active, created_at, updated_at
+		SELECT id, external_id, name, COALESCE(description,''), price_cents, COALESCE(image_url,''), COALESCE(abacate_subscription_product_id,''), is_active, created_at, updated_at
 		FROM products WHERE external_id = $1
 	`, externalID)
 	var p Product
-	err := row.Scan(&p.ID, &p.ExternalID, &p.Name, &p.Description, &p.PriceCents, &p.ImageURL, &p.IsActive, &p.CreatedAt, &p.UpdatedAt)
+	err := row.Scan(&p.ID, &p.ExternalID, &p.Name, &p.Description, &p.PriceCents, &p.ImageURL, &p.AbacateSubscriptionProductID, &p.IsActive, &p.CreatedAt, &p.UpdatedAt)
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}

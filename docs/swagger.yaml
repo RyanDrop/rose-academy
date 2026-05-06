@@ -1,33 +1,43 @@
-basePath: /
 definitions:
-  api.FieldError:
+  controllers.AbacatePayWebhookEvent:
     properties:
-      field:
+      data:
+        additionalProperties: true
+        type: object
+      devMode:
+        type: boolean
+      event:
         type: string
-      message:
+      id:
         type: string
     type: object
-  api.Problem:
+  controllers.AuthTokenResponse:
     properties:
-      detail:
-        description: Explicação específica desta ocorrência
+      token:
         type: string
-      errors:
-        description: 'Extensão: erros por campo (validação)'
+      user:
+        $ref: '#/definitions/models.User'
+    type: object
+  controllers.CancelSubscriptionRequest:
+    properties:
+      id:
+        type: string
+    type: object
+  controllers.CreateAbacateSubscriptionCheckoutRequest:
+    properties:
+      abp_product_id:
+        type: string
+      completion_url:
+        type: string
+      methods:
+        description: Assinatura v2 na Abacate aceita só CARD (PIX em conjunto gera
+          erro na API).
         items:
-          $ref: '#/definitions/api.FieldError'
+          type: string
         type: array
-      instance:
-        description: 'URI que identifica a ocorrência (ex: path da requisição)'
+      product_id:
         type: string
-      status:
-        description: Código HTTP
-        type: integer
-      title:
-        description: Resumo legível do tipo
-        type: string
-      type:
-        description: URI reference que identifica o tipo do problema
+      return_url:
         type: string
     type: object
   controllers.LoginRequest:
@@ -46,6 +56,9 @@ definitions:
         type: string
       email_verified:
         type: boolean
+      gender:
+        description: feminino, masculino, outro, prefiro_nao_dizer; vazio remove
+        type: string
       goal_id:
         type: string
       height:
@@ -53,20 +66,17 @@ definitions:
       profile_img:
         description: base64
         type: string
+      tax_id:
+        description: CPF/CNPJ (apenas dígitos gravados); string vazia remove
+        type: string
       weight:
         type: number
     type: object
   controllers.RegisterRequest:
     properties:
-      cellphone:
-        type: string
       email:
         type: string
       full_name:
-        type: string
-      gender:
-        type: string
-      goal_id:
         type: string
       password:
         type: string
@@ -81,6 +91,18 @@ definitions:
         type: string
       return_url:
         type: string
+    type: object
+  controllers.SubscriptionActiveResponse:
+    properties:
+      status:
+        description: Status PAID libera acesso; PENDING o front deve listar assinaturas
+          e ir ao checkout; null sem assinatura relevante (local).
+        type: string
+    type: object
+  controllers.WebhookAck:
+    properties:
+      received:
+        type: boolean
     type: object
   models.Goal:
     properties:
@@ -99,6 +121,9 @@ definitions:
     type: object
   models.Product:
     properties:
+      abacate_subscription_product_id:
+        description: id do produto com ciclo na loja Abacate Pay (checkout v2)
+        type: string
       created_at:
         type: string
       description:
@@ -116,6 +141,36 @@ definitions:
       price_cents:
         type: integer
       updated_at:
+        type: string
+    type: object
+  models.TrainingMonthPublic:
+    properties:
+      id:
+        type: string
+      month_number:
+        type: integer
+      subtitle:
+        description: description no banco
+        type: string
+      title:
+        type: string
+    type: object
+  models.TrainingPlanPublic:
+    properties:
+      id:
+        type: string
+      level:
+        description: PT-BR canônico (Iniciante, Intermediário, Avançado) mesmo que
+          o banco guarde sem acentos
+        type: string
+      months:
+        items:
+          $ref: '#/definitions/models.TrainingMonthPublic'
+        type: array
+      subtitle:
+        type: string
+      title:
+        description: name
         type: string
     type: object
   models.User:
@@ -153,12 +208,41 @@ definitions:
       weight:
         type: number
     type: object
+  routes.HealthResponse:
+    properties:
+      status:
+        example: ok
+        type: string
+    type: object
   services.CheckPixStatusOutput:
     properties:
       expires_at:
         type: string
       status:
         description: PENDING, EXPIRED, CANCELLED, PAID, REFUNDED
+        type: string
+    type: object
+  services.CreateAbacateSubscriptionCheckoutOutput:
+    properties:
+      amount_cents:
+        type: integer
+      billing_id:
+        type: string
+      dev_mode:
+        description: DevMode true quando a Abacate Pay cria o checkout em ambiente
+          de testes (chave de API de dev/sandbox).
+        type: boolean
+      hint:
+        description: Hint mensagem curta quando DevMode for relevante para achar o
+          checkout no painel.
+        type: string
+      payment_url:
+        type: string
+      status:
+        type: string
+      user_subscription_id:
+        description: UserSubscriptionID registro local em user_subscriptions (status
+          PENDING até o webhook marcar pago).
         type: string
     type: object
   services.CreateSubscriptionOutput:
@@ -170,20 +254,96 @@ definitions:
       status:
         type: string
     type: object
-host: localhost:8080
 info:
   contact: {}
-  description: 'API da Rose Academy: auth, metas e integração Abacate Pay.'
-  title: Rose Academy API
-  version: "1.0"
 paths:
+  /abacate/subscriptions:
+    get:
+      parameters:
+      - description: máximo de itens após filtros
+        in: query
+        name: limit
+        type: integer
+      - description: filtra por subs_*, bill_*, UUID local ou checkout_external_id
+        in: query
+        name: id
+        type: string
+      - description: checkout_external_id
+        in: query
+        name: externalId
+        type: string
+      - description: PENDING, PAID, ...
+        in: query
+        name: status
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Listar assinaturas (local)
+      tags:
+      - abacate-subscriptions
+  /abacate/subscriptions/cancel:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: id da assinatura (subs_...)
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.CancelSubscriptionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Cancelar assinatura Abacate Pay
+      tags:
+      - abacate-subscriptions
+  /abacate/subscriptions/checkout:
+    post:
+      consumes:
+      - application/json
+      description: Cria checkout (POST /v2/subscriptions/create). Grava assinatura
+        local PENDING; webhook marca PAID. Produto com ciclo na loja.
+      parameters:
+      - description: product_id, return_url, completion_url
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.CreateAbacateSubscriptionCheckoutRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/services.CreateAbacateSubscriptionCheckoutOutput'
+      security:
+      - BearerAuth: []
+      summary: Checkout assinatura Abacate Pay
+      tags:
+      - abacate-subscriptions
   /auth/login:
     post:
       consumes:
       - application/json
-      description: Valida email e senha; retorna usuário e JWT.
       parameters:
-      - description: Credenciais (email e password)
+      - description: email e senha
         in: body
         name: body
         required: true
@@ -195,23 +355,22 @@ paths:
         "200":
           description: OK
           schema:
+            $ref: '#/definitions/controllers.AuthTokenResponse'
+        "400":
+          description: validação
+          schema:
             additionalProperties: true
             type: object
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/api.Problem'
         "401":
-          description: email ou senha inválidos
+          description: credenciais inválidas
           schema:
-            $ref: '#/definitions/api.Problem'
+            additionalProperties: true
+            type: object
       summary: Login
       tags:
       - auth
   /auth/me:
     get:
-      description: 'Retorna os dados do usuário autenticado. Requer header Authorization:
-        Bearer &lt;token&gt;.'
       produces:
       - application/json
       responses:
@@ -222,25 +381,26 @@ paths:
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/api.Problem'
+            additionalProperties: true
+            type: object
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/api.Problem'
+            additionalProperties: true
+            type: object
       security:
       - BearerAuth: []
-      summary: Usuário logado
+      summary: Perfil (me)
       tags:
       - auth
     patch:
       consumes:
       - application/json
-      description: Atualiza date_birth, weight, height, goal_id, profile_img, cellphone
-        e/ou email_verified. Apenas campos enviados são alterados.
       parameters:
-      - description: Campos a atualizar
+      - description: campos opcionais
         in: body
         name: body
+        required: true
         schema:
           $ref: '#/definitions/controllers.PatchMeRequest'
       produces:
@@ -251,17 +411,20 @@ paths:
           schema:
             $ref: '#/definitions/models.User'
         "400":
-          description: Bad Request
+          description: validação
           schema:
-            $ref: '#/definitions/api.Problem'
+            additionalProperties: true
+            type: object
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/api.Problem'
-        "404":
-          description: Not Found
+            additionalProperties: true
+            type: object
+        "409":
+          description: CPF/CNPJ em uso
           schema:
-            $ref: '#/definitions/api.Problem'
+            additionalProperties: true
+            type: object
       security:
       - BearerAuth: []
       summary: Atualizar perfil
@@ -271,10 +434,11 @@ paths:
     post:
       consumes:
       - application/json
-      description: Cadastra usuário no app e cria cliente na Abacate Pay. Retorna
-        usuário e JWT.
+      description: Cria conta com email, senha e nome completo; opcional tax_id (CPF/CNPJ,
+        só dígitos no banco). Cliente na Abacate Pay; retorna JWT. Celular, meta e
+        gênero em PATCH /auth/me.
       parameters:
-      - description: Dados do cadastro
+      - description: email, password, full_name; opcional tax_id
         in: body
         name: body
         required: true
@@ -286,26 +450,27 @@ paths:
         "201":
           description: Created
           schema:
+            $ref: '#/definitions/controllers.AuthTokenResponse'
+        "400":
+          description: validação
+          schema:
             additionalProperties: true
             type: object
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/api.Problem'
         "409":
-          description: email ou CPF/CNPJ já cadastrado
+          description: email ou CPF em uso
           schema:
-            $ref: '#/definitions/api.Problem'
+            additionalProperties: true
+            type: object
         "503":
-          description: Gateway não configurado
+          description: gateway de pagamento
           schema:
-            $ref: '#/definitions/api.Problem'
-      summary: Criar usuário e cliente Abacate Pay
+            additionalProperties: true
+            type: object
+      summary: Cadastro
       tags:
       - auth
   /goals:
     get:
-      description: Retorna todas as metas ativas (para formulário de cadastro, etc.).
       produces:
       - application/json
       responses:
@@ -315,34 +480,25 @@ paths:
             items:
               $ref: '#/definitions/models.Goal'
             type: array
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/api.Problem'
       summary: Listar metas
       tags:
-      - goals
+      - catalog
   /health:
     get:
-      description: Retorna status da API. Útil para load balancers e monitoramento.
       produces:
       - application/json
       responses:
         "200":
-          description: 'Ex.: {\"status\":\"ok\"}'
+          description: OK
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/routes.HealthResponse'
       summary: Health check
       tags:
-      - health
+      - system
   /payments/pix/check:
     get:
-      description: Consulta o status do pagamento do QR Code PIX (PENDING, EXPIRED,
-        CANCELLED, PAID, REFUNDED). Ver [Checar Status](https://docs.abacatepay.com/pages/pix-qrcode/check).
       parameters:
-      - description: ID do QR Code PIX
+      - description: id do QR code na Abacate Pay
         in: query
         name: id
         required: true
@@ -354,27 +510,23 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/services.CheckPixStatusOutput'
-        "400":
-          description: id ausente
-          schema:
-            $ref: '#/definitions/api.Problem'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/api.Problem'
+            additionalProperties: true
+            type: object
         "503":
-          description: Gateway não configurado
+          description: Service Unavailable
           schema:
-            $ref: '#/definitions/api.Problem'
+            additionalProperties: true
+            type: object
       security:
       - BearerAuth: []
-      summary: Checar status PIX
+      summary: Status PIX
       tags:
       - billing
   /products:
     get:
-      description: 'Retorna os produtos/planos disponíveis para assinatura (ex.: Plano
-        Anual, Plano Mensal).'
       produces:
       - application/json
       responses:
@@ -387,28 +539,21 @@ paths:
         "401":
           description: Unauthorized
           schema:
-            additionalProperties:
-              type: string
-            type: object
-        "500":
-          description: Internal Server Error
-          schema:
-            additionalProperties:
-              type: string
+            additionalProperties: true
             type: object
       security:
       - BearerAuth: []
       summary: Listar produtos
       tags:
-      - products
+      - catalog
   /subscribe:
     post:
       consumes:
       - application/json
-      description: Cria uma cobrança para o usuário autenticado no plano escolhido.
-        Retorna a URL para pagamento (PIX ou cartão).
+      description: Cria billing na Abacate Pay v1; após pagamento o webhook marca
+        PAID
       parameters:
-      - description: product_id (UUID), return_url e completion_url
+      - description: produto e URLs de retorno
         in: body
         name: body
         required: true
@@ -422,69 +567,98 @@ paths:
           schema:
             $ref: '#/definitions/services.CreateSubscriptionOutput'
         "400":
-          description: Bad Request
+          description: validação ou cliente não vinculado
           schema:
-            additionalProperties:
-              type: string
+            additionalProperties: true
             type: object
         "401":
           description: Unauthorized
           schema:
-            additionalProperties:
-              type: string
+            additionalProperties: true
             type: object
         "404":
-          description: Not Found
+          description: produto não encontrado
           schema:
-            additionalProperties:
-              type: string
+            additionalProperties: true
             type: object
         "503":
-          description: Service Unavailable
+          description: gateway
           schema:
-            additionalProperties:
-              type: string
+            additionalProperties: true
             type: object
       security:
       - BearerAuth: []
-      summary: Assinar plano
+      summary: Assinar plano (cobrança única)
       tags:
       - billing
-  /webhooks/abacatepay:
-    post:
-      consumes:
-      - application/json
-      description: 'Endpoint para receber eventos da Abacate Pay (ex.: billing.paid).
-        Configure a URL no dashboard com o secret.'
-      parameters:
-      - description: Secret configurado no dashboard
-        in: query
-        name: webhookSecret
-        type: string
+  /subscriptions/active:
+    get:
+      description: 'Prioridade: PAID > PENDING com base em user_subscriptions (user_id).
+        null se não houver PAID nem PENDING. PENDING: front lista GET /abacate/subscriptions
+        (local) e redireciona ao checkout.'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            additionalProperties:
-              type: boolean
+            $ref: '#/definitions/controllers.SubscriptionActiveResponse'
+      security:
+      - BearerAuth: []
+      summary: Status da assinatura (local)
+      tags:
+      - subscriptions
+  /training-plans:
+    get:
+      description: Retorna training_plans (is_active) e training_months (is_active);
+        title=name, subtitle=description; level em PT-BR com acentos (Iniciante, Intermediário,
+        Avançado) mesmo que o banco guarde sem acentos.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.TrainingPlanPublic'
+            type: array
+      summary: Listar planos de treino com meses
+      tags:
+      - catalog
+  /webhooks/abacatepay:
+    post:
+      consumes:
+      - application/json
+      description: 'Validação opcional: query webhookSecret = ABACATE_PAY_WEBHOOK_SECRET'
+      parameters:
+      - description: deve coincidir com ABACATE_PAY_WEBHOOK_SECRET se configurado
+        in: query
+        name: webhookSecret
+        type: string
+      - description: evento (ex. billing.paid)
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.AbacatePayWebhookEvent'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/controllers.WebhookAck'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
             type: object
         "401":
           description: Unauthorized
           schema:
-            additionalProperties:
-              type: string
+            additionalProperties: true
             type: object
       summary: Webhook Abacate Pay
       tags:
-      - billing
-schemes:
-- http
-- https
-securityDefinitions:
-  BearerAuth:
-    in: header
-    name: Authorization
-    type: apiKey
+      - webhooks
 swagger: "2.0"

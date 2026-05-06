@@ -19,6 +19,13 @@ func NewProductsController(productRepo models.ProductRepository, devMode bool) *
 	return &ProductsController{productRepo: productRepo, devMode: devMode}
 }
 
+// List lista produtos/planos (requer JWT)
+// @Summary		Listar produtos
+// @Tags			catalog
+// @Produce		json
+// @Security		BearerAuth
+// @Success		200	{array}	models.Product
+// @Failure		401	{object}	map[string]interface{}
 // @Router		/products [get]
 func (c *ProductsController) List(w http.ResponseWriter, r *http.Request) {
 	products, err := c.productRepo.FindAll()

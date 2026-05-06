@@ -1,21 +1,140 @@
 {
-    "schemes": [
-        "http",
-        "https"
-    ],
     "swagger": "2.0",
     "info": {
-        "description": "API da Rose Academy: auth, metas e integração Abacate Pay.",
-        "title": "Rose Academy API",
-        "contact": {},
-        "version": "1.0"
+        "contact": {}
     },
-    "host": "localhost:8080",
-    "basePath": "/",
     "paths": {
+        "/abacate/subscriptions": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "abacate-subscriptions"
+                ],
+                "summary": "Listar assinaturas (local)",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "máximo de itens após filtros",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "filtra por subs_*, bill_*, UUID local ou checkout_external_id",
+                        "name": "id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "checkout_external_id",
+                        "name": "externalId",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "PENDING, PAID, ...",
+                        "name": "status",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/abacate/subscriptions/cancel": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "abacate-subscriptions"
+                ],
+                "summary": "Cancelar assinatura Abacate Pay",
+                "parameters": [
+                    {
+                        "description": "id da assinatura (subs_...)",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/controllers.CancelSubscriptionRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/abacate/subscriptions/checkout": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Cria checkout (POST /v2/subscriptions/create). Grava assinatura local PENDING; webhook marca PAID. Produto com ciclo na loja.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "abacate-subscriptions"
+                ],
+                "summary": "Checkout assinatura Abacate Pay",
+                "parameters": [
+                    {
+                        "description": "product_id, return_url, completion_url",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/controllers.CreateAbacateSubscriptionCheckoutRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/services.CreateAbacateSubscriptionCheckoutOutput"
+                        }
+                    }
+                }
+            }
+        },
         "/auth/login": {
             "post": {
-                "description": "Valida email e senha; retorna usuário e JWT.",
                 "consumes": [
                     "application/json"
                 ],
@@ -28,7 +147,7 @@
                 "summary": "Login",
                 "parameters": [
                     {
-                        "description": "Credenciais (email e password)",
+                        "description": "email e senha",
                         "name": "body",
                         "in": "body",
                         "required": true,
@@ -41,20 +160,21 @@
                     "200": {
                         "description": "OK",
                         "schema": {
+                            "$ref": "#/definitions/controllers.AuthTokenResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "validação",
+                        "schema": {
                             "type": "object",
                             "additionalProperties": true
                         }
                     },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/api.Problem"
-                        }
-                    },
                     "401": {
-                        "description": "email ou senha inválidos",
+                        "description": "credenciais inválidas",
                         "schema": {
-                            "$ref": "#/definitions/api.Problem"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     }
                 }
@@ -67,14 +187,13 @@
                         "BearerAuth": []
                     }
                 ],
-                "description": "Retorna os dados do usuário autenticado. Requer header Authorization: Bearer \u0026lt;token\u0026gt;.",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "auth"
                 ],
-                "summary": "Usuário logado",
+                "summary": "Perfil (me)",
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -85,13 +204,15 @@
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/api.Problem"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/api.Problem"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     }
                 }
@@ -102,7 +223,6 @@
                         "BearerAuth": []
                     }
                 ],
-                "description": "Atualiza date_birth, weight, height, goal_id, profile_img, cellphone e/ou email_verified. Apenas campos enviados são alterados.",
                 "consumes": [
                     "application/json"
                 ],
@@ -115,9 +235,10 @@
                 "summary": "Atualizar perfil",
                 "parameters": [
                     {
-                        "description": "Campos a atualizar",
+                        "description": "campos opcionais",
                         "name": "body",
                         "in": "body",
+                        "required": true,
                         "schema": {
                             "$ref": "#/definitions/controllers.PatchMeRequest"
                         }
@@ -131,21 +252,24 @@
                         }
                     },
                     "400": {
-                        "description": "Bad Request",
+                        "description": "validação",
                         "schema": {
-                            "$ref": "#/definitions/api.Problem"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/api.Problem"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
-                    "404": {
-                        "description": "Not Found",
+                    "409": {
+                        "description": "CPF/CNPJ em uso",
                         "schema": {
-                            "$ref": "#/definitions/api.Problem"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     }
                 }
@@ -153,7 +277,7 @@
         },
         "/auth/register": {
             "post": {
-                "description": "Cadastra usuário no app e cria cliente na Abacate Pay. Retorna usuário e JWT.",
+                "description": "Cria conta com email, senha e nome completo; opcional tax_id (CPF/CNPJ, só dígitos no banco). Cliente na Abacate Pay; retorna JWT. Celular, meta e gênero em PATCH /auth/me.",
                 "consumes": [
                     "application/json"
                 ],
@@ -163,10 +287,10 @@
                 "tags": [
                     "auth"
                 ],
-                "summary": "Criar usuário e cliente Abacate Pay",
+                "summary": "Cadastro",
                 "parameters": [
                     {
-                        "description": "Dados do cadastro",
+                        "description": "email, password, full_name; opcional tax_id",
                         "name": "body",
                         "in": "body",
                         "required": true,
@@ -179,26 +303,28 @@
                     "201": {
                         "description": "Created",
                         "schema": {
+                            "$ref": "#/definitions/controllers.AuthTokenResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "validação",
+                        "schema": {
                             "type": "object",
                             "additionalProperties": true
                         }
                     },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/api.Problem"
-                        }
-                    },
                     "409": {
-                        "description": "email ou CPF/CNPJ já cadastrado",
+                        "description": "email ou CPF em uso",
                         "schema": {
-                            "$ref": "#/definitions/api.Problem"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "503": {
-                        "description": "Gateway não configurado",
+                        "description": "gateway de pagamento",
                         "schema": {
-                            "$ref": "#/definitions/api.Problem"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     }
                 }
@@ -206,12 +332,11 @@
         },
         "/goals": {
             "get": {
-                "description": "Retorna todas as metas ativas (para formulário de cadastro, etc.).",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "goals"
+                    "catalog"
                 ],
                 "summary": "Listar metas",
                 "responses": {
@@ -223,34 +348,24 @@
                                 "$ref": "#/definitions/models.Goal"
                             }
                         }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/api.Problem"
-                        }
                     }
                 }
             }
         },
         "/health": {
             "get": {
-                "description": "Retorna status da API. Útil para load balancers e monitoramento.",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "health"
+                    "system"
                 ],
                 "summary": "Health check",
                 "responses": {
                     "200": {
-                        "description": "Ex.: {\\\"status\\\":\\\"ok\\\"}",
+                        "description": "OK",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/routes.HealthResponse"
                         }
                     }
                 }
@@ -263,18 +378,17 @@
                         "BearerAuth": []
                     }
                 ],
-                "description": "Consulta o status do pagamento do QR Code PIX (PENDING, EXPIRED, CANCELLED, PAID, REFUNDED). Ver [Checar Status](https://docs.abacatepay.com/pages/pix-qrcode/check).",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "billing"
                 ],
-                "summary": "Checar status PIX",
+                "summary": "Status PIX",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID do QR Code PIX",
+                        "description": "id do QR code na Abacate Pay",
                         "name": "id",
                         "in": "query",
                         "required": true
@@ -287,22 +401,18 @@
                             "$ref": "#/definitions/services.CheckPixStatusOutput"
                         }
                     },
-                    "400": {
-                        "description": "id ausente",
-                        "schema": {
-                            "$ref": "#/definitions/api.Problem"
-                        }
-                    },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/api.Problem"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "503": {
-                        "description": "Gateway não configurado",
+                        "description": "Service Unavailable",
                         "schema": {
-                            "$ref": "#/definitions/api.Problem"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     }
                 }
@@ -315,12 +425,11 @@
                         "BearerAuth": []
                     }
                 ],
-                "description": "Retorna os produtos/planos disponíveis para assinatura (ex.: Plano Anual, Plano Mensal).",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "products"
+                    "catalog"
                 ],
                 "summary": "Listar produtos",
                 "responses": {
@@ -337,18 +446,7 @@
                         "description": "Unauthorized",
                         "schema": {
                             "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "additionalProperties": true
                         }
                     }
                 }
@@ -361,7 +459,7 @@
                         "BearerAuth": []
                     }
                 ],
-                "description": "Cria uma cobrança para o usuário autenticado no plano escolhido. Retorna a URL para pagamento (PIX ou cartão).",
+                "description": "Cria billing na Abacate Pay v1; após pagamento o webhook marca PAID",
                 "consumes": [
                     "application/json"
                 ],
@@ -371,10 +469,10 @@
                 "tags": [
                     "billing"
                 ],
-                "summary": "Assinar plano",
+                "summary": "Assinar plano (cobrança única)",
                 "parameters": [
                     {
-                        "description": "product_id (UUID), return_url e completion_url",
+                        "description": "produto e URLs de retorno",
                         "name": "body",
                         "in": "body",
                         "required": true,
@@ -391,38 +489,78 @@
                         }
                     },
                     "400": {
-                        "description": "Bad Request",
+                        "description": "validação ou cliente não vinculado",
                         "schema": {
                             "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "additionalProperties": true
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
                             "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "additionalProperties": true
                         }
                     },
                     "404": {
-                        "description": "Not Found",
+                        "description": "produto não encontrado",
                         "schema": {
                             "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "additionalProperties": true
                         }
                     },
                     "503": {
-                        "description": "Service Unavailable",
+                        "description": "gateway",
                         "schema": {
                             "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/subscriptions/active": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Prioridade: PAID \u003e PENDING com base em user_subscriptions (user_id). null se não houver PAID nem PENDING. PENDING: front lista GET /abacate/subscriptions (local) e redireciona ao checkout.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "subscriptions"
+                ],
+                "summary": "Status da assinatura (local)",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/controllers.SubscriptionActiveResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/training-plans": {
+            "get": {
+                "description": "Retorna training_plans (is_active) e training_months (is_active); title=name, subtitle=description; level em PT-BR com acentos (Iniciante, Intermediário, Avançado) mesmo que o banco guarde sem acentos.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "catalog"
+                ],
+                "summary": "Listar planos de treino com meses",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.TrainingPlanPublic"
                             }
                         }
                     }
@@ -431,7 +569,7 @@
         },
         "/webhooks/abacatepay": {
             "post": {
-                "description": "Endpoint para receber eventos da Abacate Pay (ex.: billing.paid). Configure a URL no dashboard com o secret.",
+                "description": "Validação opcional: query webhookSecret = ABACATE_PAY_WEBHOOK_SECRET",
                 "consumes": [
                     "application/json"
                 ],
@@ -439,34 +577,45 @@
                     "application/json"
                 ],
                 "tags": [
-                    "billing"
+                    "webhooks"
                 ],
                 "summary": "Webhook Abacate Pay",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Secret configurado no dashboard",
+                        "description": "deve coincidir com ABACATE_PAY_WEBHOOK_SECRET se configurado",
                         "name": "webhookSecret",
                         "in": "query"
+                    },
+                    {
+                        "description": "evento (ex. billing.paid)",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/controllers.AbacatePayWebhookEvent"
+                        }
                     }
                 ],
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
+                            "$ref": "#/definitions/controllers.WebhookAck"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
                             "type": "object",
-                            "additionalProperties": {
-                                "type": "boolean"
-                            }
+                            "additionalProperties": true
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
                             "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "additionalProperties": true
                         }
                     }
                 }
@@ -474,45 +623,63 @@
         }
     },
     "definitions": {
-        "api.FieldError": {
+        "controllers.AbacatePayWebhookEvent": {
             "type": "object",
             "properties": {
-                "field": {
+                "data": {
+                    "type": "object",
+                    "additionalProperties": true
+                },
+                "devMode": {
+                    "type": "boolean"
+                },
+                "event": {
                     "type": "string"
                 },
-                "message": {
+                "id": {
                     "type": "string"
                 }
             }
         },
-        "api.Problem": {
+        "controllers.AuthTokenResponse": {
             "type": "object",
             "properties": {
-                "detail": {
-                    "description": "Explicação específica desta ocorrência",
+                "token": {
                     "type": "string"
                 },
-                "errors": {
-                    "description": "Extensão: erros por campo (validação)",
+                "user": {
+                    "$ref": "#/definitions/models.User"
+                }
+            }
+        },
+        "controllers.CancelSubscriptionRequest": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                }
+            }
+        },
+        "controllers.CreateAbacateSubscriptionCheckoutRequest": {
+            "type": "object",
+            "properties": {
+                "abp_product_id": {
+                    "type": "string"
+                },
+                "completion_url": {
+                    "type": "string"
+                },
+                "methods": {
+                    "description": "Assinatura v2 na Abacate aceita só CARD (PIX em conjunto gera erro na API).",
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/api.FieldError"
+                        "type": "string"
                     }
                 },
-                "instance": {
-                    "description": "URI que identifica a ocorrência (ex: path da requisição)",
+                "product_id": {
                     "type": "string"
                 },
-                "status": {
-                    "description": "Código HTTP",
-                    "type": "integer"
-                },
-                "title": {
-                    "description": "Resumo legível do tipo",
-                    "type": "string"
-                },
-                "type": {
-                    "description": "URI reference que identifica o tipo do problema",
+                "return_url": {
                     "type": "string"
                 }
             }
@@ -541,6 +708,10 @@
                 "email_verified": {
                     "type": "boolean"
                 },
+                "gender": {
+                    "description": "feminino, masculino, outro, prefiro_nao_dizer; vazio remove",
+                    "type": "string"
+                },
                 "goal_id": {
                     "type": "string"
                 },
@@ -551,6 +722,10 @@
                     "description": "base64",
                     "type": "string"
                 },
+                "tax_id": {
+                    "description": "CPF/CNPJ (apenas dígitos gravados); string vazia remove",
+                    "type": "string"
+                },
                 "weight": {
                     "type": "number"
                 }
@@ -559,19 +734,10 @@
         "controllers.RegisterRequest": {
             "type": "object",
             "properties": {
-                "cellphone": {
-                    "type": "string"
-                },
                 "email": {
                     "type": "string"
                 },
                 "full_name": {
-                    "type": "string"
-                },
-                "gender": {
-                    "type": "string"
-                },
-                "goal_id": {
                     "type": "string"
                 },
                 "password": {
@@ -593,6 +759,23 @@
                 },
                 "return_url": {
                     "type": "string"
+                }
+            }
+        },
+        "controllers.SubscriptionActiveResponse": {
+            "type": "object",
+            "properties": {
+                "status": {
+                    "description": "Status PAID libera acesso; PENDING o front deve listar assinaturas e ir ao checkout; null sem assinatura relevante (local).",
+                    "type": "string"
+                }
+            }
+        },
+        "controllers.WebhookAck": {
+            "type": "object",
+            "properties": {
+                "received": {
+                    "type": "boolean"
                 }
             }
         },
@@ -622,6 +805,10 @@
         "models.Product": {
             "type": "object",
             "properties": {
+                "abacate_subscription_product_id": {
+                    "description": "id do produto com ciclo na loja Abacate Pay (checkout v2)",
+                    "type": "string"
+                },
                 "created_at": {
                     "type": "string"
                 },
@@ -647,6 +834,49 @@
                     "type": "integer"
                 },
                 "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.TrainingMonthPublic": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "month_number": {
+                    "type": "integer"
+                },
+                "subtitle": {
+                    "description": "description no banco",
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.TrainingPlanPublic": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "level": {
+                    "description": "PT-BR canônico (Iniciante, Intermediário, Avançado) mesmo que o banco guarde sem acentos",
+                    "type": "string"
+                },
+                "months": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.TrainingMonthPublic"
+                    }
+                },
+                "subtitle": {
+                    "type": "string"
+                },
+                "title": {
+                    "description": "name",
                     "type": "string"
                 }
             }
@@ -704,6 +934,15 @@
                 }
             }
         },
+        "routes.HealthResponse": {
+            "type": "object",
+            "properties": {
+                "status": {
+                    "type": "string",
+                    "example": "ok"
+                }
+            }
+        },
         "services.CheckPixStatusOutput": {
             "type": "object",
             "properties": {
@@ -712,6 +951,35 @@
                 },
                 "status": {
                     "description": "PENDING, EXPIRED, CANCELLED, PAID, REFUNDED",
+                    "type": "string"
+                }
+            }
+        },
+        "services.CreateAbacateSubscriptionCheckoutOutput": {
+            "type": "object",
+            "properties": {
+                "amount_cents": {
+                    "type": "integer"
+                },
+                "billing_id": {
+                    "type": "string"
+                },
+                "dev_mode": {
+                    "description": "DevMode true quando a Abacate Pay cria o checkout em ambiente de testes (chave de API de dev/sandbox).",
+                    "type": "boolean"
+                },
+                "hint": {
+                    "description": "Hint mensagem curta quando DevMode for relevante para achar o checkout no painel.",
+                    "type": "string"
+                },
+                "payment_url": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "user_subscription_id": {
+                    "description": "UserSubscriptionID registro local em user_subscriptions (status PENDING até o webhook marcar pago).",
                     "type": "string"
                 }
             }
@@ -729,13 +997,6 @@
                     "type": "string"
                 }
             }
-        }
-    },
-    "securityDefinitions": {
-        "BearerAuth": {
-            "type": "apiKey",
-            "name": "Authorization",
-            "in": "header"
         }
     }
 }

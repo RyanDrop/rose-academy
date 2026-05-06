@@ -44,6 +44,8 @@ type UpdateProfileParams struct {
 	GoalID        *uuid.UUID
 	ProfileImg    *string
 	Cellphone     *string
+	TaxID         *string // apenas dígitos; string vazia zera tax_id no banco
+	Gender        *string // valores gender_type; string vazia zera gender
 	EmailVerified *bool
 }
 
