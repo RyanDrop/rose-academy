@@ -28,8 +28,16 @@ func (d DBConfig) DSN() string {
 	if d.SSLMode == "" {
 		d.SSLMode = "disable"
 	}
-	return fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=%s",
-		d.User, d.Password, d.Host, d.Port, d.DBName, d.SSLMode)
+
+	return fmt.Sprintf(
+		"host=%s port=%s user=%s password=%s dbname=%s sslmode=%s",
+		d.Host,
+		d.Port,
+		d.User,
+		d.Password,
+		d.DBName,
+		d.SSLMode,
+	)
 }
 
 // AbacatePayConfig configuração da API Abacate Pay
