@@ -74,20 +74,9 @@ func (c JWTConfig) ValidateToken(tokenString string) (uuid.UUID, error) {
 func Auth(jwtConfig JWTConfig) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			auth := strings.TrimSpace(r.Header.Get("Authorization"))
-			if auth == "" {
-				api.Write(w, r, http.StatusUnauthorized, "Unauthorized", "token ausente")
-				return
-			}
-			tokenString := ""
-			parts := strings.SplitN(auth, " ", 2)
-			if len(parts) == 2 && strings.EqualFold(parts[0], "Bearer") {
-				tokenString = strings.TrimSpace(parts[1])
-			} else if len(parts) == 1 && parts[0] != "" {
-				tokenString = parts[0]
-			}
+			tokenString := bearerTokenFromRequest(r)
 			if tokenString == "" {
-				api.Write(w, r, http.StatusUnauthorized, "Unauthorized", "envie o token no header: Authorization: Bearer <token>")
+				api.Write(w, r, http.StatusUnauthorized, "Unauthorized", "token ausente")
 				return
 			}
 			userID, err := jwtConfig.ValidateToken(tokenString)
@@ -109,4 +98,40 @@ func GetUserID(ctx context.Context) (uuid.UUID, bool) {
 	}
 	id, ok := v.(uuid.UUID)
 	return id, ok
+}
+
+// bearerTokenFromRequest extrai o JWT do header Authorization (Bearer ou token cru).
+func bearerTokenFromRequest(r *http.Request) string {
+	auth := strings.TrimSpace(r.Header.Get("Authorization"))
+	if auth == "" {
+		return ""
+	}
+	parts := strings.SplitN(auth, " ", 2)
+	if len(parts) == 2 && strings.EqualFold(parts[0], "Bearer") {
+		return strings.TrimSpace(parts[1])
+	}
+	if len(parts) == 1 && parts[0] != "" {
+		return parts[0]
+	}
+	return ""
+}
+
+// OptionalAuth valida o Bearer se existir e coloca user_id no context; sem header ou token inválido segue sem usuário (não responde 401).
+func OptionalAuth(jwtConfig JWTConfig) func(next http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			tokenString := bearerTokenFromRequest(r)
+			if tokenString == "" {
+				next.ServeHTTP(w, r)
+				return
+			}
+			userID, err := jwtConfig.ValidateToken(tokenString)
+			if err != nil {
+				next.ServeHTTP(w, r)
+				return
+			}
+			ctx := context.WithValue(r.Context(), UserIDContextKey, userID)
+			next.ServeHTTP(w, r.WithContext(ctx))
+		})
+	}
 }

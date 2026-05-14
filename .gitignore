@@ -1,6 +1,7 @@
 # Binário
 /rose-academy
 *.exe
+.build/
 
 # Dependências
 /vendor/

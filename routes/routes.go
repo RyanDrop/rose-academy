@@ -57,6 +57,10 @@ func Setup(cfg *config.Config, database *sql.DB) http.Handler {
 	abpRepo := models.NewPostgresABPCustomerRepository(database)
 	productRepo := models.NewPostgresProductRepository(database)
 	subRepo := models.NewPostgresUserSubscriptionRepository(database)
+	userTrainingRepo := models.NewPostgresUserTrainingRepository(database)
+	workoutRepo := models.NewPostgresTrainingWorkoutRepository(database)
+	exerciseRepo := models.NewPostgresExerciseRepository(database)
+	progressRepo := models.NewPostgresTrainingProgressRepository(database)
 
 	// Serviços
 	abpClient := services.NewAbacatePayClient(cfg.AbacatePay.BaseURL, cfg.AbacatePay.V2BaseURL, cfg.AbacatePay.APIKey, cfg.AbacatePay.PaymentMethods, cfg.AbacatePay.SubMethods)
@@ -69,10 +73,14 @@ func Setup(cfg *config.Config, database *sql.DB) http.Handler {
 	// Controllers
 	authCtrl := controllers.NewAuthController(authService, userRepo, goalRepo, jwtConfig, cfg.Env == "development")
 	goalsCtrl := controllers.NewGoalsController(goalRepo, cfg.Env == "development")
-	trainingPlansCtrl := controllers.NewTrainingPlansController(trainingPlanRepo, cfg.Env == "development")
+	trainingPlansCtrl := controllers.NewTrainingPlansController(trainingPlanRepo, userTrainingRepo, cfg.Env == "development")
 	productsCtrl := controllers.NewProductsController(productRepo, cfg.Env == "development")
 	billingCtrl := controllers.NewBillingController(billingService, cfg.AbacatePay.WebhookSecret, cfg.Env == "development")
 	abpSubCtrl := controllers.NewAbacateSubscriptionsController(billingService, cfg.Env == "development")
+	userTrainingCtrl := controllers.NewUserTrainingController(userTrainingRepo, cfg.Env == "development")
+	workoutsCtrl := controllers.NewTrainingWorkoutsController(workoutRepo, cfg.Env == "development")
+	exercisesCtrl := controllers.NewExercisesController(exerciseRepo, cfg.Env == "development")
+	progressCtrl := controllers.NewTrainingProgressController(progressRepo, workoutRepo, cfg.Env == "development")
 
 	// Swagger UI (documentação da API no browser: /swagger/index.html)
 	r.Mount("/swagger", httpSwagger.WrapHandler)
@@ -80,7 +88,8 @@ func Setup(cfg *config.Config, database *sql.DB) http.Handler {
 	// Rotas públicas
 	r.Get("/health", Health)
 	r.Get("/goals", goalsCtrl.List)
-	r.Get("/training-plans", trainingPlansCtrl.List)
+	r.With(authmw.OptionalAuth(jwtConfig)).Get("/training-plans", trainingPlansCtrl.List)
+	r.Get("/exercises", exercisesCtrl.List)
 	r.Post("/auth/register", authCtrl.Register)
 	r.Post("/auth/login", authCtrl.Login)
 	r.Post("/webhooks/abacatepay", billingCtrl.WebhookAbacatePay)
@@ -96,6 +105,21 @@ func Setup(cfg *config.Config, database *sql.DB) http.Handler {
 		r.Get("/abacate/subscriptions", abpSubCtrl.List)
 		r.Post("/abacate/subscriptions/cancel", abpSubCtrl.Cancel)
 		r.Get("/subscriptions/active", abpSubCtrl.SubscriptionActive)
+		r.Post("/me/training/plan", userTrainingCtrl.SelectPlan)
+		r.Get("/me/training/plan", userTrainingCtrl.GetActivePlan)
+		r.Get("/me/training/months", userTrainingCtrl.ListPlanMonths)
+		r.Post("/me/training/months/{month_number}/start", userTrainingCtrl.StartMonth)
+		r.Get("/me/training/months/{month_id}/workouts", workoutsCtrl.ListMonthWorkouts)
+		r.Get("/me/training/months/{month_id}/weight-progression", progressCtrl.GetWeightProgression)
+		r.Get("/me/training/months/{month_id}/weekly-performance", progressCtrl.GetWeeklyBestPerformance)
+		r.Get("/me/training/months/{month_id}/progression-summary", progressCtrl.GetMonthlyProgressionSummary)
+		r.Get("/me/training/months/{month_id}/statistics", progressCtrl.GetMonthStatistics)
+		r.Post("/me/training/months/{month_id}/progress/reset", progressCtrl.ResetMonthProgress)
+		r.Post("/me/training/workouts/{workout_id}/complete", progressCtrl.CompleteWorkout)
+		r.Get("/me/training/workouts/day/{day_number}", workoutsCtrl.GetWorkoutOfDay)
+		r.Get("/me/training/workouts/{workout_id}", workoutsCtrl.GetWorkout)
+		r.Post("/me/training/workout-completions/{completion_id}/sets/batch", progressCtrl.LogExerciseSetsBatch)
+		r.Post("/me/training/workout-completions/{completion_id}/sets", progressCtrl.LogExerciseSet)
 	})
 
 	return r

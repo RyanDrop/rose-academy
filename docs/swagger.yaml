@@ -154,6 +154,9 @@ definitions:
         type: string
       title:
         type: string
+      active:
+        type: boolean
+        description: Com Bearer e plano ativo, mesma regra (selected_at) em todos os planos; senão false
     type: object
   models.TrainingPlanPublic:
     properties:

@@ -33,7 +33,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "integer",
-                        "description": "máximo de itens após filtros",
+                        "description": "m\u00e1ximo de itens ap\u00f3s filtros",
                         "name": "limit",
                         "in": "query"
                     },
@@ -176,14 +176,14 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "validação",
+                        "description": "valida\u00e7\u00e3o",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
                         }
                     },
                     "401": {
-                        "description": "credenciais inválidas",
+                        "description": "credenciais inv\u00e1lidas",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
@@ -264,7 +264,7 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "validação",
+                        "description": "valida\u00e7\u00e3o",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
@@ -289,7 +289,7 @@ const docTemplate = `{
         },
         "/auth/register": {
             "post": {
-                "description": "Cria conta com email, senha e nome completo; opcional tax_id (CPF/CNPJ, só dígitos no banco). Cliente na Abacate Pay; retorna JWT. Celular, meta e gênero em PATCH /auth/me.",
+                "description": "Cria conta com email, senha e nome completo; opcional tax_id (CPF/CNPJ, s\u00f3 d\u00edgitos no banco). Cliente na Abacate Pay; retorna JWT. Celular, meta e g\u00eanero em PATCH /auth/me.",
                 "consumes": [
                     "application/json"
                 ],
@@ -319,7 +319,7 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "validação",
+                        "description": "valida\u00e7\u00e3o",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
@@ -334,6 +334,43 @@ const docTemplate = `{
                     },
                     "503": {
                         "description": "gateway de pagamento",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/exercises": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "training"
+                ],
+                "summary": "Listar exercicios",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "filtro ILIKE em nome, musculo alvo, equipamento",
+                        "name": "q",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.ExercisePublic"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
@@ -378,6 +415,967 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/routes.HealthResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/me/training/months": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "training"
+                ],
+                "summary": "Meses do plano ativo",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.UserTrainingMonthItem"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/me/training/months/{month_id}/progress/reset": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "training"
+                ],
+                "summary": "Resetar progresso do mes",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "name": "month_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.ResetMonthProgressResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/me/training/months/{month_id}/progression-summary": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "training"
+                ],
+                "summary": "Resumo comparativo mensal por exercicio",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "name": "month_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.MonthlyProgressionSummaryRow"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/me/training/months/{month_id}/statistics": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "training"
+                ],
+                "summary": "Estatisticas agregadas do mes",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "name": "month_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.MonthStatisticsRow"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/me/training/months/{month_id}/weekly-performance": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "training"
+                ],
+                "summary": "Melhor desempenho semanal por exercicio",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "name": "month_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.WeeklyBestPerformanceRow"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/me/training/months/{month_id}/weight-progression": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "training"
+                ],
+                "summary": "Progressao de cargas no mes",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "name": "month_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.WeightProgressionRow"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/me/training/months/{month_id}/workouts": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "training"
+                ],
+                "summary": "Treinos do mes (get_month_workouts)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "name": "month_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.MonthWorkoutSummary"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/me/training/months/{month_number}/start": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "training"
+                ],
+                "summary": "Iniciar mes do plano (start_month_progress)",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "name": "month_number",
+                        "in": "path",
+                        "required": true,
+                        "description": "1-12"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.StartMonthProgressResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden (mes nao liberado pelo cronograma do plano atual)",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/me/training/plan": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "training"
+                ],
+                "summary": "Plano de treino ativo",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.UserActivePlanResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "training"
+                ],
+                "summary": "Escolher plano de treino (select_training_plan)",
+                "parameters": [
+                    {
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/controllers.SelectTrainingPlanRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.SelectTrainingPlanResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Failed",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/me/training/workout-completions/{completion_id}/sets": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "training"
+                ],
+                "summary": "Registrar serie (log_exercise_set)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "name": "completion_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.LogExerciseSetRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.LogExerciseSetResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Failed",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/me/training/workout-completions/{completion_id}/sets/batch": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "training"
+                ],
+                "summary": "Registrar series em lote",
+                "description": "Envie todas as series ao fim do treino; body com array sets (cada item como em registrar uma serie).",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "name": "completion_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.LogExerciseSetsBatchRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.LogExerciseSetsBatchResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Failed",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/me/training/workouts/day/{day_number}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "training"
+                ],
+                "summary": "Treino do dia (1-7); query opcional month_id",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "name": "day_number",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "name": "month_id",
+                        "in": "query",
+                        "required": false
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.WorkoutDetailResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/me/training/workouts/{workout_id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "training"
+                ],
+                "summary": "Detalhe do treino",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "name": "workout_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.WorkoutDetailResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/me/training/workouts/{workout_id}/complete": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "training"
+                ],
+                "summary": "Concluir treino (complete_workout)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "name": "workout_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.CompleteWorkoutRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.CompleteWorkoutResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Failed",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     }
                 }
@@ -471,7 +1469,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Cria billing na Abacate Pay v1; após pagamento o webhook marca PAID",
+                "description": "Cria billing na Abacate Pay v1; ap\u00f3s pagamento o webhook marca PAID",
                 "consumes": [
                     "application/json"
                 ],
@@ -481,7 +1479,7 @@ const docTemplate = `{
                 "tags": [
                     "billing"
                 ],
-                "summary": "Assinar plano (cobrança única)",
+                "summary": "Assinar plano (cobran\u00e7a \u00fanica)",
                 "parameters": [
                     {
                         "description": "produto e URLs de retorno",
@@ -501,7 +1499,7 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "validação ou cliente não vinculado",
+                        "description": "valida\u00e7\u00e3o ou cliente n\u00e3o vinculado",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
@@ -515,7 +1513,7 @@ const docTemplate = `{
                         }
                     },
                     "404": {
-                        "description": "produto não encontrado",
+                        "description": "produto n\u00e3o encontrado",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
@@ -538,7 +1536,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Prioridade: PAID \u003e PENDING com base em user_subscriptions (user_id). null se não houver PAID nem PENDING. PENDING: front lista GET /abacate/subscriptions (local) e redireciona ao checkout.",
+                "description": "Prioridade: PAID > PENDING com base em user_subscriptions (user_id). null se n\u00e3o houver PAID nem PENDING. PENDING: front lista GET /abacate/subscriptions (local) e redireciona ao checkout.",
                 "produces": [
                     "application/json"
                 ],
@@ -558,7 +1556,7 @@ const docTemplate = `{
         },
         "/training-plans": {
             "get": {
-                "description": "Retorna training_plans (is_active) e training_months (is_active); title=name, subtitle=description; level em PT-BR com acentos (Iniciante, Intermediário, Avançado) mesmo que o banco guarde sem acentos.",
+                "description": "Retorna training_plans (is_active) e training_months (is_active); title=name, subtitle=description; level em PT-BR com acentos (Iniciante, Intermedi\u00e1rio, Avan\u00e7ado) mesmo que o banco guarde sem acentos. Opcional: Authorization Bearer: o campo active nos meses usa selected_at do plano ativo e a mesma regra de calend\u00e1rio (1..12) em todos os n\u00edveis do cat\u00e1logo; sem token ou sem plano, active=false.",
                 "produces": [
                     "application/json"
                 ],
@@ -581,7 +1579,7 @@ const docTemplate = `{
         },
         "/webhooks/abacatepay": {
             "post": {
-                "description": "Validação opcional: query webhookSecret = ABACATE_PAY_WEBHOOK_SECRET",
+                "description": "Valida\u00e7\u00e3o opcional: query webhookSecret = ABACATE_PAY_WEBHOOK_SECRET",
                 "consumes": [
                     "application/json"
                 ],
@@ -682,7 +1680,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "methods": {
-                    "description": "Assinatura v2 na Abacate aceita só CARD (PIX em conjunto gera erro na API).",
+                    "description": "Assinatura v2 na Abacate aceita s\u00f3 CARD (PIX em conjunto gera erro na API).",
                     "type": "array",
                     "items": {
                         "type": "string"
@@ -735,7 +1733,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "tax_id": {
-                    "description": "CPF/CNPJ (apenas dígitos gravados); string vazia remove",
+                    "description": "CPF/CNPJ (apenas d\u00edgitos gravados); string vazia remove",
                     "type": "string"
                 },
                 "weight": {
@@ -757,6 +1755,15 @@ const docTemplate = `{
                 },
                 "tax_id": {
                     "type": "string"
+                }
+            }
+        },
+        "controllers.SelectTrainingPlanRequest": {
+            "type": "object",
+            "properties": {
+                "level": {
+                    "type": "string",
+                    "description": "iniciante, intermediario ou avancado (aceita variantes)"
                 }
             }
         },
@@ -791,6 +1798,57 @@ const docTemplate = `{
                 }
             }
         },
+        "models.CompleteWorkoutRequest": {
+            "type": "object",
+            "properties": {
+                "week_number": {
+                    "type": "integer",
+                    "description": "semana do mes 1-4"
+                },
+                "notes": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.CompleteWorkoutResponse": {
+            "type": "object",
+            "properties": {
+                "completion_id": {
+                    "type": "string",
+                    "format": "uuid"
+                }
+            }
+        },
+        "models.ExercisePublic": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string",
+                    "format": "uuid"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "equipment": {
+                    "type": "string"
+                },
+                "target_muscle": {
+                    "type": "string"
+                },
+                "video_url": {
+                    "type": "string"
+                },
+                "video_embed_url": {
+                    "type": "string"
+                },
+                "instructions": {
+                    "type": "string"
+                },
+                "thumbnail_url": {
+                    "type": "string"
+                }
+            }
+        },
         "models.Goal": {
             "type": "object",
             "properties": {
@@ -811,6 +1869,151 @@ const docTemplate = `{
                 },
                 "updated_at": {
                     "type": "string"
+                }
+            }
+        },
+        "models.LogExerciseSetRequest": {
+            "type": "object",
+            "properties": {
+                "workout_exercise_id": {
+                    "type": "string",
+                    "format": "uuid"
+                },
+                "set_number": {
+                    "type": "integer"
+                },
+                "weight_used": {
+                    "type": "number"
+                },
+                "reps_completed": {
+                    "type": "integer"
+                },
+                "notes": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.LogExerciseSetResponse": {
+            "type": "object",
+            "properties": {
+                "set_id": {
+                    "type": "string",
+                    "format": "uuid"
+                }
+            }
+        },
+        "models.LogExerciseSetsBatchRequest": {
+            "type": "object",
+            "properties": {
+                "sets": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.LogExerciseSetRequest"
+                    }
+                }
+            }
+        },
+        "models.LogExerciseSetsBatchResponse": {
+            "type": "object",
+            "properties": {
+                "set_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "string",
+                        "format": "uuid"
+                    }
+                },
+                "count": {
+                    "type": "integer"
+                }
+            }
+        },
+        "models.MonthStatisticsRow": {
+            "type": "object",
+            "properties": {
+                "total_workouts_completed": {
+                    "type": "integer"
+                },
+                "total_exercises_completed": {
+                    "type": "integer"
+                },
+                "total_sets_completed": {
+                    "type": "integer"
+                },
+                "average_weight": {
+                    "type": "number"
+                },
+                "max_weight": {
+                    "type": "number"
+                },
+                "total_volume": {
+                    "type": "number"
+                },
+                "weeks_completed": {
+                    "type": "integer"
+                },
+                "completion_percentage": {
+                    "type": "number"
+                }
+            }
+        },
+        "models.MonthWorkoutSummary": {
+            "type": "object",
+            "properties": {
+                "workout_id": {
+                    "type": "string",
+                    "format": "uuid"
+                },
+                "day_number": {
+                    "type": "integer"
+                },
+                "day_name": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "total_exercises": {
+                    "type": "integer",
+                    "format": "int64"
+                }
+            }
+        },
+        "models.MonthlyProgressionSummaryRow": {
+            "type": "object",
+            "properties": {
+                "exercise_name": {
+                    "type": "string"
+                },
+                "equipment": {
+                    "type": "string"
+                },
+                "target_muscle": {
+                    "type": "string"
+                },
+                "week1_weight": {
+                    "type": "number"
+                },
+                "week2_weight": {
+                    "type": "number"
+                },
+                "week3_weight": {
+                    "type": "number"
+                },
+                "week4_weight": {
+                    "type": "number"
+                },
+                "initial_weight": {
+                    "type": "number"
+                },
+                "final_weight": {
+                    "type": "number"
+                },
+                "weight_gain": {
+                    "type": "number"
+                },
+                "percentage_gain": {
+                    "type": "number"
                 }
             }
         },
@@ -850,6 +2053,32 @@ const docTemplate = `{
                 }
             }
         },
+        "models.ResetMonthProgressResponse": {
+            "type": "object",
+            "properties": {
+                "reset": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "models.SelectTrainingPlanResponse": {
+            "type": "object",
+            "properties": {
+                "selection_id": {
+                    "type": "string",
+                    "format": "uuid"
+                }
+            }
+        },
+        "models.StartMonthProgressResponse": {
+            "type": "object",
+            "properties": {
+                "progress_id": {
+                    "type": "string",
+                    "format": "uuid"
+                }
+            }
+        },
         "models.TrainingMonthPublic": {
             "type": "object",
             "properties": {
@@ -865,6 +2094,10 @@ const docTemplate = `{
                 },
                 "title": {
                     "type": "string"
+                },
+                "active": {
+                    "type": "boolean",
+                    "description": "Com Bearer e plano ativo: igual GET /me/training/months; sen\u00e3o false"
                 }
             }
         },
@@ -875,7 +2108,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "level": {
-                    "description": "PT-BR canônico (Iniciante, Intermediário, Avançado) mesmo que o banco guarde sem acentos",
+                    "description": "PT-BR can\u00f4nico (Iniciante, Intermedi\u00e1rio, Avan\u00e7ado) mesmo que o banco guarde sem acentos",
                     "type": "string"
                 },
                 "months": {
@@ -946,6 +2179,191 @@ const docTemplate = `{
                 }
             }
         },
+        "models.UserActivePlanResponse": {
+            "type": "object",
+            "properties": {
+                "plan_id": {
+                    "type": "string",
+                    "format": "uuid"
+                },
+                "level": {
+                    "type": "string"
+                },
+                "plan_name": {
+                    "type": "string"
+                },
+                "selected_at": {
+                    "type": "string",
+                    "format": "date-time"
+                }
+            }
+        },
+        "models.UserTrainingMonthItem": {
+            "type": "object",
+            "properties": {
+                "month_id": {
+                    "type": "string",
+                    "format": "uuid"
+                },
+                "month_number": {
+                    "type": "integer"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "is_started": {
+                    "type": "boolean"
+                },
+                "is_completed": {
+                    "type": "boolean"
+                },
+                "started_at": {
+                    "type": "string",
+                    "format": "date-time"
+                },
+                "completed_at": {
+                    "type": "string",
+                    "format": "date-time"
+                },
+                "active": {
+                    "type": "boolean",
+                    "description": "liberado para os 12 meses do plano ativo (meses-calendario desde selected_at do plano); calculado na API"
+                }
+            }
+        },
+        "models.WeeklyBestPerformanceRow": {
+            "type": "object",
+            "properties": {
+                "exercise_id": {
+                    "type": "string",
+                    "format": "uuid"
+                },
+                "exercise_name": {
+                    "type": "string"
+                },
+                "equipment": {
+                    "type": "string"
+                },
+                "target_muscle": {
+                    "type": "string"
+                },
+                "week_number": {
+                    "type": "integer"
+                },
+                "max_weight": {
+                    "type": "number"
+                },
+                "avg_weight": {
+                    "type": "number"
+                },
+                "total_sets": {
+                    "type": "integer"
+                },
+                "avg_reps": {
+                    "type": "number"
+                },
+                "last_completed": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.WeightProgressionRow": {
+            "type": "object",
+            "properties": {
+                "exercise_name": {
+                    "type": "string"
+                },
+                "equipment": {
+                    "type": "string"
+                },
+                "target_muscle": {
+                    "type": "string"
+                },
+                "week_number": {
+                    "type": "integer"
+                },
+                "set_number": {
+                    "type": "integer"
+                },
+                "weight_used": {
+                    "type": "number"
+                },
+                "reps_completed": {
+                    "type": "integer"
+                },
+                "completed_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.WorkoutDetailResponse": {
+            "type": "object",
+            "properties": {
+                "workout": {
+                    "$ref": "#/definitions/models.WorkoutPublic"
+                },
+                "exercises": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.WorkoutExercisePublic"
+                    }
+                }
+            }
+        },
+        "models.WorkoutExercisePublic": {
+            "type": "object",
+            "properties": {
+                "workout_exercise_id": {
+                    "type": "string",
+                    "format": "uuid"
+                },
+                "order_position": {
+                    "type": "integer"
+                },
+                "sets": {
+                    "type": "integer"
+                },
+                "reps": {
+                    "type": "string"
+                },
+                "rest_time_seconds": {
+                    "type": "integer"
+                },
+                "instructions": {
+                    "type": "string"
+                },
+                "notes": {
+                    "type": "string"
+                },
+                "exercise": {
+                    "$ref": "#/definitions/models.ExercisePublic"
+                }
+            }
+        },
+        "models.WorkoutPublic": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string",
+                    "format": "uuid"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "day_number": {
+                    "type": "integer"
+                },
+                "day_name": {
+                    "type": "string"
+                }
+            }
+        },
         "routes.HealthResponse": {
             "type": "object",
             "properties": {
@@ -991,7 +2409,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "user_subscription_id": {
-                    "description": "UserSubscriptionID registro local em user_subscriptions (status PENDING até o webhook marcar pago).",
+                    "description": "UserSubscriptionID registro local em user_subscriptions (status PENDING at\u00e9 o webhook marcar pago).",
                     "type": "string"
                 }
             }
@@ -1010,7 +2428,8 @@ const docTemplate = `{
                 }
             }
         }
-    }
+    },
+    "securityDefinitions": {"BearerAuth": {"type": "apiKey", "name": "Authorization", "in": "header"}}
 }`
 
 // SwaggerInfo holds exported Swagger Info so clients can modify it

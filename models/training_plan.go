@@ -8,6 +8,7 @@ type TrainingMonthPublic struct {
 	Title       string    `json:"title"`
 	Subtitle    *string   `json:"subtitle,omitempty"` // description no banco
 	MonthNumber int       `json:"month_number"`
+	Active      bool      `json:"active"` // com JWT + plano ativo: mesma regra de tempo (selected_at) em todos os planos do catálogo; senão false
 }
 
 // TrainingPlanPublic plano com meses aninhados (sem is_active nem timestamps).

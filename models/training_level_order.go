@@ -75,3 +75,21 @@ func trainingLevelRank(level *string) int {
 	}
 	return 99
 }
+
+// ToTrainingLevelDBEnum converte o nível enviado pelo cliente para o literal do enum PostgreSQL training_level_type.
+func ToTrainingLevelDBEnum(raw string) (enum string, ok bool) {
+	s := strings.TrimSpace(raw)
+	if s == "" {
+		return "", false
+	}
+	switch trainingLevelRank(&s) {
+	case 1:
+		return "iniciante", true
+	case 2:
+		return "intermediario", true
+	case 3:
+		return "avancado", true
+	default:
+		return "", false
+	}
+}
