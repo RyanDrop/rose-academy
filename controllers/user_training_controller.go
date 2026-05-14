@@ -154,10 +154,9 @@ func (c *UserTrainingController) ListPlanMonths(w http.ResponseWriter, r *http.R
 		api.WriteInternalErr(w, r, err, c.devMode)
 		return
 	}
-	hasStarted, err := c.repo.HasUserStartedAnyTrainingMonth(userID)
-	if err != nil {
-		api.WriteInternalErr(w, r, err, c.devMode)
-		return
+	hasStarted := false
+	if hs, err := c.repo.HasUserStartedAnyTrainingMonth(userID); err == nil {
+		hasStarted = hs
 	}
 	now := time.Now()
 	for _, m := range months {
@@ -205,10 +204,9 @@ func (c *UserTrainingController) StartMonth(w http.ResponseWriter, r *http.Reque
 		api.WriteInternalErr(w, r, err, c.devMode)
 		return
 	}
-	hasStarted, err := c.repo.HasUserStartedAnyTrainingMonth(userID)
-	if err != nil {
-		api.WriteInternalErr(w, r, err, c.devMode)
-		return
+	hasStarted := false
+	if hs, err := c.repo.HasUserStartedAnyTrainingMonth(userID); err == nil {
+		hasStarted = hs
 	}
 	if !hasStarted && n != 1 {
 		api.Write(w, r, http.StatusForbidden, "Forbidden", "inicie o mês 1 do plano antes de iniciar outros meses")

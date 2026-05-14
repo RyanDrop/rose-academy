@@ -75,14 +75,9 @@ func (c *TrainingPlansController) applyMonthsActive(r *http.Request, plans []*mo
 		}
 		return err
 	}
-	hasStarted, err := c.userTraining.HasUserStartedAnyTrainingMonth(userID)
-	if err != nil {
-		for _, pl := range plans {
-			for _, m := range pl.Months {
-				m.Active = false
-			}
-		}
-		return err
+	hasStarted := false
+	if hs, err := c.userTraining.HasUserStartedAnyTrainingMonth(userID); err == nil {
+		hasStarted = hs
 	}
 	now := time.Now()
 	for _, pl := range plans {
