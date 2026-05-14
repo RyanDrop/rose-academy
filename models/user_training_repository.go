@@ -108,6 +108,19 @@ func (r *PostgresUserTrainingRepository) HasActiveTrainingSelection(userID uuid.
 	return ok, err
 }
 
+// HasUserStartedAnyTrainingMonth indica se existe progresso de mês marcado como iniciado.
+func (r *PostgresUserTrainingRepository) HasUserStartedAnyTrainingMonth(userID uuid.UUID) (bool, error) {
+	var ok bool
+	err := r.db.QueryRowContext(context.Background(),
+		`SELECT EXISTS (
+			SELECT 1 FROM user_month_progress
+			WHERE user_id = $1::uuid AND is_started = true
+		)`,
+		userID,
+	).Scan(&ok)
+	return ok, err
+}
+
 // StartMonthProgress executa start_month_progress.
 func (r *PostgresUserTrainingRepository) StartMonthProgress(userID uuid.UUID, monthNumber int) (uuid.UUID, error) {
 	var id uuid.UUID

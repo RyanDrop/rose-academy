@@ -112,7 +112,7 @@ func (c *UserTrainingController) GetActivePlan(w http.ResponseWriter, r *http.Re
 
 // ListPlanMonths lista os 12 meses com status (get_user_plan_months).
 // @Summary		Meses do plano ativo
-// @Description	Requer plano ativo; caso contrário 404. O campo `active` usa só os 12 meses do plano atual, ancorados em selected_at do plano ativo (mês 1 no mês da seleção; ao trocar de nível, reinicia).
+// @Description	Requer plano ativo; caso contrário 404. O campo active: sem nenhum mês de treino iniciado (user_month_progress), só o mês 1 fica true; após iniciar algum mês, segue selected_at e meses de calendário (1..12).
 // @Tags			training
 // @Produce		json
 // @Security		BearerAuth
@@ -154,9 +154,14 @@ func (c *UserTrainingController) ListPlanMonths(w http.ResponseWriter, r *http.R
 		api.WriteInternalErr(w, r, err, c.devMode)
 		return
 	}
+	hasStarted, err := c.repo.HasUserStartedAnyTrainingMonth(userID)
+	if err != nil {
+		api.WriteInternalErr(w, r, err, c.devMode)
+		return
+	}
 	now := time.Now()
 	for _, m := range months {
-		m.Active = models.TrainingMonthActiveForPlan(m.MonthNumber, plan.SelectedAt, now)
+		m.Active = models.TrainingMonthActiveForList(m.MonthNumber, plan.SelectedAt, now, hasStarted)
 	}
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	_ = json.NewEncoder(w).Encode(months)
@@ -164,7 +169,7 @@ func (c *UserTrainingController) ListPlanMonths(w http.ResponseWriter, r *http.R
 
 // StartMonth inicia ou retoma progresso no mês (start_month_progress).
 // @Summary		Iniciar mês do plano
-// @Description	month_number de 1 a 12, relativo ao plano ativo. Exige o mesmo critério de `active` em GET /me/training/months (âncora: selected_at do plano ativo).
+// @Description	month_number de 1 a 12. Sem nenhum mês de treino iniciado, só é permitido iniciar o mês 1; depois aplica-se o mesmo critério de active que GET /me/training/months (selected_at + calendário).
 // @Tags			training
 // @Produce		json
 // @Security		BearerAuth
@@ -200,7 +205,16 @@ func (c *UserTrainingController) StartMonth(w http.ResponseWriter, r *http.Reque
 		api.WriteInternalErr(w, r, err, c.devMode)
 		return
 	}
-	if !models.TrainingMonthActiveForPlan(n, plan.SelectedAt, time.Now()) {
+	hasStarted, err := c.repo.HasUserStartedAnyTrainingMonth(userID)
+	if err != nil {
+		api.WriteInternalErr(w, r, err, c.devMode)
+		return
+	}
+	if !hasStarted && n != 1 {
+		api.Write(w, r, http.StatusForbidden, "Forbidden", "inicie o mês 1 do plano antes de iniciar outros meses")
+		return
+	}
+	if hasStarted && !models.TrainingMonthActiveForPlan(n, plan.SelectedAt, time.Now()) {
 		api.Write(w, r, http.StatusForbidden, "Forbidden", "este mês ainda não está liberado pelo cronograma do plano atual")
 		return
 	}

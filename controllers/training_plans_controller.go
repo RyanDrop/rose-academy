@@ -26,7 +26,7 @@ func NewTrainingPlansController(repo models.TrainingPlanRepository, userTraining
 
 // List planos ativos com meses ativos (sem is_active, created_at, updated_at).
 // @Summary		Listar planos de treino com meses
-// @Description	Retorna training_plans (is_active) e training_months (is_active); title=name, subtitle=description; level em PT-BR com acentos (Iniciante, Intermediário, Avançado) mesmo que o banco guarde sem acentos. Cada mês inclui active: com Bearer e plano ativo, a mesma regra de tempo (selected_at do plano ativo + meses de calendário, 1..12) aplica-se a todos os níveis do catálogo (mês 1 e 2 ativos nos três planos após 1 mês de uso, etc.); sem token ou sem plano, active=false.
+// @Description	Retorna training_plans (is_active) e training_months (is_active); title=name, subtitle=description; level em PT-BR com acentos (Iniciante, Intermediário, Avançado) mesmo que o banco guarde sem acentos. Cada mês inclui active: com Bearer e plano ativo, sem nenhum mês de treino iniciado só o mês 1 fica true em todos os níveis; após iniciar algum mês, a mesma regra de calendário (selected_at, 1..12) em todos os planos; sem token ou sem plano, active=false.
 // @Tags			catalog
 // @Produce		json
 // @Success		200	{array}	models.TrainingPlanPublic
@@ -75,10 +75,19 @@ func (c *TrainingPlansController) applyMonthsActive(r *http.Request, plans []*mo
 		}
 		return err
 	}
+	hasStarted, err := c.userTraining.HasUserStartedAnyTrainingMonth(userID)
+	if err != nil {
+		for _, pl := range plans {
+			for _, m := range pl.Months {
+				m.Active = false
+			}
+		}
+		return err
+	}
 	now := time.Now()
 	for _, pl := range plans {
 		for _, m := range pl.Months {
-			m.Active = models.TrainingMonthActiveForPlan(m.MonthNumber, plan.SelectedAt, now)
+			m.Active = models.TrainingMonthActiveForList(m.MonthNumber, plan.SelectedAt, now, hasStarted)
 		}
 	}
 	return nil

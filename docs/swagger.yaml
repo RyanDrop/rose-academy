@@ -156,7 +156,7 @@ definitions:
         type: string
       active:
         type: boolean
-        description: Com Bearer e plano ativo, mesma regra (selected_at) em todos os planos; senão false
+        description: Sem mês iniciado só mês 1; depois selected_at + calendário; senão false
     type: object
   models.TrainingPlanPublic:
     properties:

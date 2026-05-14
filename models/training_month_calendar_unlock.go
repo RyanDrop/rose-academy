@@ -25,3 +25,13 @@ func TrainingMonthActiveForPlan(monthNumber int, planSelectedAt, ref time.Time) 
 	}
 	return ElapsedCalendarMonths(planSelectedAt, ref) >= monthNumber-1
 }
+
+// TrainingMonthActiveForList regra de active em listagens (catálogo e GET /me/training/months):
+// até existir pelo menos um mês de treino iniciado (user_month_progress.is_started), só o mês 1
+// fica liberado em todos os níveis; depois aplica-se TrainingMonthActiveForPlan com selected_at.
+func TrainingMonthActiveForList(monthNumber int, planSelectedAt, ref time.Time, hasStartedAnyTrainingMonth bool) bool {
+	if !hasStartedAnyTrainingMonth {
+		return monthNumber == 1
+	}
+	return TrainingMonthActiveForPlan(monthNumber, planSelectedAt, ref)
+}

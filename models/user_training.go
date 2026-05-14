@@ -15,8 +15,8 @@ type UserActivePlanResponse struct {
 }
 
 // UserTrainingMonthItem mês do plano ativo com progresso (get_user_plan_months).
-// Active é calculado em tempo real (não vem do PG): meses 1..12 do plano atual, ancorados em
-// selected_at do plano ativo (cada nível reinicia em mês 1 ao escolher o plano).
+// Active é calculado na API: sem nenhum mês iniciado (user_month_progress.is_started), só mês 1 true;
+// depois selected_at + meses de calendário (1..12).
 type UserTrainingMonthItem struct {
 	MonthID          uuid.UUID  `json:"month_id"`
 	MonthNumber      int        `json:"month_number"`
@@ -45,5 +45,7 @@ type UserTrainingRepository interface {
 	GetActivePlan(userID uuid.UUID) (*UserActivePlanResponse, error)
 	ListPlanMonths(userID uuid.UUID) ([]*UserTrainingMonthItem, error)
 	HasActiveTrainingSelection(userID uuid.UUID) (bool, error)
+	// HasUserStartedAnyTrainingMonth indica se o utilizador já iniciou algum mês (user_month_progress.is_started).
+	HasUserStartedAnyTrainingMonth(userID uuid.UUID) (bool, error)
 	StartMonthProgress(userID uuid.UUID, monthNumber int) (progressID uuid.UUID, err error)
 }

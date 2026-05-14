@@ -20,6 +20,20 @@ func TestElapsedCalendarMonths(t *testing.T) {
 	}
 }
 
+func TestTrainingMonthActiveForList(t *testing.T) {
+	anchor := time.Date(2026, time.January, 1, 0, 0, 0, 0, time.UTC)
+	ref := time.Date(2027, time.January, 1, 0, 0, 0, 0, time.UTC)
+	if !models.TrainingMonthActiveForList(1, anchor, ref, false) {
+		t.Fatal("sem treino iniciado: mês 1 deve estar ativo")
+	}
+	if models.TrainingMonthActiveForList(2, anchor, ref, false) {
+		t.Fatal("sem treino iniciado: mês 2 não deve estar ativo")
+	}
+	if !models.TrainingMonthActiveForList(2, anchor, ref, true) {
+		t.Fatal("com treino iniciado: mês 2 deve seguir calendário (12 meses após anchor)")
+	}
+}
+
 func TestTrainingMonthActiveForPlan(t *testing.T) {
 	anchor := time.Date(2026, time.May, 1, 0, 0, 0, 0, time.UTC)
 	ref := time.Date(2026, time.May, 15, 0, 0, 0, 0, time.UTC)

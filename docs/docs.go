@@ -1556,7 +1556,7 @@ const docTemplate = `{
         },
         "/training-plans": {
             "get": {
-                "description": "Retorna training_plans (is_active) e training_months (is_active); title=name, subtitle=description; level em PT-BR com acentos (Iniciante, Intermedi\u00e1rio, Avan\u00e7ado) mesmo que o banco guarde sem acentos. Opcional: Authorization Bearer: o campo active nos meses usa selected_at do plano ativo e a mesma regra de calend\u00e1rio (1..12) em todos os n\u00edveis do cat\u00e1logo; sem token ou sem plano, active=false.",
+                "description": "Retorna training_plans (is_active) e training_months (is_active); title=name, subtitle=description; level em PT-BR com acentos (Iniciante, Intermedi\u00e1rio, Avan\u00e7ado) mesmo que o banco guarde sem acentos. Opcional: Authorization Bearer: active por m\u00eas \u2014 sem treino iniciado s\u00f3 m\u00eas 1 em todos os n\u00edveis; depois selected_at + calend\u00e1rio em todos; sem token ou sem plano, active=false.",
                 "produces": [
                     "application/json"
                 ],
@@ -2097,7 +2097,7 @@ const docTemplate = `{
                 },
                 "active": {
                     "type": "boolean",
-                    "description": "Com Bearer e plano ativo: igual GET /me/training/months; sen\u00e3o false"
+                    "description": "Com Bearer e plano ativo: sem m\u00eas iniciado s\u00f3 m\u00eas 1; depois selected_at em todos os planos; sen\u00e3o false"
                 }
             }
         },
@@ -2230,7 +2230,7 @@ const docTemplate = `{
                 },
                 "active": {
                     "type": "boolean",
-                    "description": "liberado para os 12 meses do plano ativo (meses-calendario desde selected_at do plano); calculado na API"
+                    "description": "Sem m\u00eas iniciado: s\u00f3 m\u00eas 1; depois selected_at + calend\u00e1rio (1..12); calculado na API"
                 }
             }
         },

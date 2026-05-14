@@ -550,7 +550,7 @@ new_defs = {
             "completed_at": {"type": "string", "format": "date-time"},
             "active": {
                 "type": "boolean",
-                "description": "liberado para os 12 meses do plano ativo (meses-calendario desde selected_at do plano); calculado na API",
+                "description": "Sem mês iniciado: só mês 1; depois selected_at + calendário (1..12); calculado na API",
             },
         },
     },
